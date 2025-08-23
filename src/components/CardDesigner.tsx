@@ -697,7 +697,7 @@ export function CardDesigner() {
                 if (!isPreviewMode) setSelectedElement(image.id);
               }}
               onMouseDown={(e) => {
-                if (isPreviewMode) return;
+                if (isPreviewMode || e.target !== e.currentTarget) return;
                 
                 const startX = e.clientX - image.x;
                 const startY = e.clientY - image.y;
@@ -724,6 +724,249 @@ export function CardDesigner() {
                 className="w-full h-full object-cover"
                 draggable={false}
               />
+              
+              {/* Resize Handles - Only show when selected and not in preview mode */}
+              {selectedElement === image.id && !isPreviewMode && (
+                <>
+                  {/* Corner resize handles */}
+                  <div
+                    className="absolute -top-1 -left-1 w-3 h-3 bg-primary border border-background rounded-full cursor-nw-resize"
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      const startX = e.clientX;
+                      const startY = e.clientY;
+                      const startWidth = image.width;
+                      const startHeight = image.height;
+                      const startPosX = image.x;
+                      const startPosY = image.y;
+                      
+                      const handleMouseMove = (e: MouseEvent) => {
+                        const deltaX = startX - e.clientX;
+                        const deltaY = startY - e.clientY;
+                        const newWidth = Math.max(20, startWidth + deltaX);
+                        const newHeight = Math.max(20, startHeight + deltaY);
+                        
+                        updateImage(image.id, {
+                          width: newWidth,
+                          height: newHeight,
+                          x: startPosX - (newWidth - startWidth),
+                          y: startPosY - (newHeight - startHeight)
+                        });
+                      };
+                      
+                      const handleMouseUp = () => {
+                        document.removeEventListener('mousemove', handleMouseMove);
+                        document.removeEventListener('mouseup', handleMouseUp);
+                      };
+                      
+                      document.addEventListener('mousemove', handleMouseMove);
+                      document.addEventListener('mouseup', handleMouseUp);
+                    }}
+                  />
+                  
+                  <div
+                    className="absolute -top-1 -right-1 w-3 h-3 bg-primary border border-background rounded-full cursor-ne-resize"
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      const startX = e.clientX;
+                      const startY = e.clientY;
+                      const startWidth = image.width;
+                      const startHeight = image.height;
+                      const startPosY = image.y;
+                      
+                      const handleMouseMove = (e: MouseEvent) => {
+                        const deltaX = e.clientX - startX;
+                        const deltaY = startY - e.clientY;
+                        const newWidth = Math.max(20, startWidth + deltaX);
+                        const newHeight = Math.max(20, startHeight + deltaY);
+                        
+                        updateImage(image.id, {
+                          width: newWidth,
+                          height: newHeight,
+                          y: startPosY - (newHeight - startHeight)
+                        });
+                      };
+                      
+                      const handleMouseUp = () => {
+                        document.removeEventListener('mousemove', handleMouseMove);
+                        document.removeEventListener('mouseup', handleMouseUp);
+                      };
+                      
+                      document.addEventListener('mousemove', handleMouseMove);
+                      document.addEventListener('mouseup', handleMouseUp);
+                    }}
+                  />
+                  
+                  <div
+                    className="absolute -bottom-1 -left-1 w-3 h-3 bg-primary border border-background rounded-full cursor-sw-resize"
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      const startX = e.clientX;
+                      const startY = e.clientY;
+                      const startWidth = image.width;
+                      const startHeight = image.height;
+                      const startPosX = image.x;
+                      
+                      const handleMouseMove = (e: MouseEvent) => {
+                        const deltaX = startX - e.clientX;
+                        const deltaY = e.clientY - startY;
+                        const newWidth = Math.max(20, startWidth + deltaX);
+                        const newHeight = Math.max(20, startHeight + deltaY);
+                        
+                        updateImage(image.id, {
+                          width: newWidth,
+                          height: newHeight,
+                          x: startPosX - (newWidth - startWidth)
+                        });
+                      };
+                      
+                      const handleMouseUp = () => {
+                        document.removeEventListener('mousemove', handleMouseMove);
+                        document.removeEventListener('mouseup', handleMouseUp);
+                      };
+                      
+                      document.addEventListener('mousemove', handleMouseMove);
+                      document.addEventListener('mouseup', handleMouseUp);
+                    }}
+                  />
+                  
+                  <div
+                    className="absolute -bottom-1 -right-1 w-3 h-3 bg-primary border border-background rounded-full cursor-se-resize"
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      const startX = e.clientX;
+                      const startY = e.clientY;
+                      const startWidth = image.width;
+                      const startHeight = image.height;
+                      
+                      const handleMouseMove = (e: MouseEvent) => {
+                        const deltaX = e.clientX - startX;
+                        const deltaY = e.clientY - startY;
+                        
+                        updateImage(image.id, {
+                          width: Math.max(20, startWidth + deltaX),
+                          height: Math.max(20, startHeight + deltaY)
+                        });
+                      };
+                      
+                      const handleMouseUp = () => {
+                        document.removeEventListener('mousemove', handleMouseMove);
+                        document.removeEventListener('mouseup', handleMouseUp);
+                      };
+                      
+                      document.addEventListener('mousemove', handleMouseMove);
+                      document.addEventListener('mouseup', handleMouseUp);
+                    }}
+                  />
+                  
+                  {/* Edge resize handles */}
+                  <div
+                    className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-3 h-2 bg-primary border border-background rounded cursor-n-resize"
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      const startY = e.clientY;
+                      const startHeight = image.height;
+                      const startPosY = image.y;
+                      
+                      const handleMouseMove = (e: MouseEvent) => {
+                        const deltaY = startY - e.clientY;
+                        const newHeight = Math.max(20, startHeight + deltaY);
+                        
+                        updateImage(image.id, {
+                          height: newHeight,
+                          y: startPosY - (newHeight - startHeight)
+                        });
+                      };
+                      
+                      const handleMouseUp = () => {
+                        document.removeEventListener('mousemove', handleMouseMove);
+                        document.removeEventListener('mouseup', handleMouseUp);
+                      };
+                      
+                      document.addEventListener('mousemove', handleMouseMove);
+                      document.addEventListener('mouseup', handleMouseUp);
+                    }}
+                  />
+                  
+                  <div
+                    className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-3 h-2 bg-primary border border-background rounded cursor-s-resize"
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      const startY = e.clientY;
+                      const startHeight = image.height;
+                      
+                      const handleMouseMove = (e: MouseEvent) => {
+                        const deltaY = e.clientY - startY;
+                        
+                        updateImage(image.id, {
+                          height: Math.max(20, startHeight + deltaY)
+                        });
+                      };
+                      
+                      const handleMouseUp = () => {
+                        document.removeEventListener('mousemove', handleMouseMove);
+                        document.removeEventListener('mouseup', handleMouseUp);
+                      };
+                      
+                      document.addEventListener('mousemove', handleMouseMove);
+                      document.addEventListener('mouseup', handleMouseUp);
+                    }}
+                  />
+                  
+                  <div
+                    className="absolute -left-1 top-1/2 transform -translate-y-1/2 w-2 h-3 bg-primary border border-background rounded cursor-w-resize"
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      const startX = e.clientX;
+                      const startWidth = image.width;
+                      const startPosX = image.x;
+                      
+                      const handleMouseMove = (e: MouseEvent) => {
+                        const deltaX = startX - e.clientX;
+                        const newWidth = Math.max(20, startWidth + deltaX);
+                        
+                        updateImage(image.id, {
+                          width: newWidth,
+                          x: startPosX - (newWidth - startWidth)
+                        });
+                      };
+                      
+                      const handleMouseUp = () => {
+                        document.removeEventListener('mousemove', handleMouseMove);
+                        document.removeEventListener('mouseup', handleMouseUp);
+                      };
+                      
+                      document.addEventListener('mousemove', handleMouseMove);
+                      document.addEventListener('mouseup', handleMouseUp);
+                    }}
+                  />
+                  
+                  <div
+                    className="absolute -right-1 top-1/2 transform -translate-y-1/2 w-2 h-3 bg-primary border border-background rounded cursor-e-resize"
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      const startX = e.clientX;
+                      const startWidth = image.width;
+                      
+                      const handleMouseMove = (e: MouseEvent) => {
+                        const deltaX = e.clientX - startX;
+                        
+                        updateImage(image.id, {
+                          width: Math.max(20, startWidth + deltaX)
+                        });
+                      };
+                      
+                      const handleMouseUp = () => {
+                        document.removeEventListener('mousemove', handleMouseMove);
+                        document.removeEventListener('mouseup', handleMouseUp);
+                      };
+                      
+                      document.addEventListener('mousemove', handleMouseMove);
+                      document.addEventListener('mouseup', handleMouseUp);
+                    }}
+                  />
+                </>
+              )}
             </div>
           ))}
 
