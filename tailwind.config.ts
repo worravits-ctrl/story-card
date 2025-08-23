@@ -67,7 +67,17 @@ export default {
 			},
 			fontFamily: {
 				'inter': ['Inter', 'Noto Sans Thai', 'sans-serif'],
-				'thai': ['Noto Sans Thai', 'Inter', 'sans-serif']
+				'thai': ['Noto Sans Thai', 'Inter', 'sans-serif'],
+				'mitr': ['Mitr', 'sans-serif'],
+				'prompt': ['Prompt', 'sans-serif'],
+				'kanit': ['Kanit', 'sans-serif'],
+				'sarabun': ['Sarabun', 'sans-serif'],
+				'chakra': ['Chakra Petch', 'sans-serif'],
+				'k2d': ['K2D', 'sans-serif'],
+				'mali': ['Mali', 'cursive'],
+				'bai': ['Bai Jamjuree', 'sans-serif'],
+				'ibm': ['IBM Plex Sans Thai', 'sans-serif'],
+				'sriracha': ['Sriracha', 'cursive']
 			},
 			borderRadius: {
 				lg: 'var(--radius)',

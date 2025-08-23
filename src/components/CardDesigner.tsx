@@ -72,7 +72,9 @@ const CARD_TEMPLATES = [
 ];
 
 const FONT_FAMILIES = [
-  'Inter', 'Noto Sans Thai', 'Arial', 'Helvetica', 'Times New Roman', 'Georgia', 'Verdana'
+  'Inter', 'Noto Sans Thai', 'Mitr', 'Prompt', 'Kanit', 'Sarabun', 
+  'Chakra Petch', 'K2D', 'Mali', 'Bai Jamjuree', 'IBM Plex Sans Thai', 
+  'Sriracha', 'Arial', 'Helvetica', 'Times New Roman', 'Georgia', 'Verdana'
 ];
 
 export function CardDesigner() {
