@@ -1,42 +1,65 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* Card Designer App - Modern Design System */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Modern Creative Palette */
+    --background: 240 10% 98%;
+    --foreground: 240 10% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 240 10% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 240 10% 15%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Creative Blue Primary */
+    --primary: 248 95% 62%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 248 90% 75%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Purple Accent */
+    --secondary: 258 85% 68%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 240 5% 96%;
+    --muted-foreground: 240 4% 46%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 258 85% 68%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 85% 60%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 240 6% 90%;
+    --input: 240 6% 90%;
+    --ring: 248 95% 62%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
+
+    /* Custom Design Tokens */
+    --canvas-bg: 248 25% 97%;
+    --sidebar-bg: 0 0% 100%;
+    --toolbar-bg: 240 5% 96%;
+    
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(248 95% 62%), hsl(258 85% 68%));
+    --gradient-canvas: linear-gradient(135deg, hsl(248 25% 97%), hsl(240 10% 98%));
+    --gradient-sidebar: linear-gradient(180deg, hsl(0 0% 100%), hsl(240 5% 98%));
+    
+    /* Shadows */
+    --shadow-soft: 0 4px 20px -4px hsl(240 10% 15% / 0.1);
+    --shadow-card: 0 8px 30px -8px hsl(248 95% 62% / 0.15);
+    --shadow-float: 0 12px 40px -12px hsl(240 10% 15% / 0.2);
+    
+    /* Animation */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-spring: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 
     --sidebar-background: 0 0% 98%;
 
@@ -100,6 +123,124 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-inter;
+  }
+}
+
+@layer components {
+  /* Canvas Elements */
+  .draggable-text {
+    @apply absolute cursor-move select-none p-2 border-2 border-transparent;
+    transition: var(--transition-smooth);
+  }
+  
+  .draggable-text:hover {
+    @apply border-primary/30 shadow-lg;
+  }
+  
+  .draggable-text.selected {
+    @apply border-primary shadow-card;
+  }
+  
+  .draggable-image {
+    @apply absolute cursor-move border-2 border-transparent rounded-lg overflow-hidden;
+    transition: var(--transition-smooth);
+  }
+  
+  .draggable-image:hover {
+    @apply border-primary/30 shadow-lg;
+  }
+  
+  .draggable-image.selected {
+    @apply border-primary shadow-card;
+  }
+
+  /* Canvas Area */
+  .canvas-area {
+    background: var(--gradient-canvas);
+    box-shadow: var(--shadow-soft);
+  }
+  
+  /* Sidebar */
+  .sidebar-gradient {
+    background: var(--gradient-sidebar);
+    box-shadow: var(--shadow-soft);
+  }
+  
+  /* Custom Scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    @apply w-2;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-muted rounded-full;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-primary/30 rounded-full;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-primary/50;
+  }
+}
+
+@layer utilities {
+  /* Typography */
+  .font-inter {
+    font-family: 'Inter', 'Noto Sans Thai', sans-serif;
+  }
+  
+  .font-thai {
+    font-family: 'Noto Sans Thai', 'Inter', sans-serif;
+  }
+  
+  /* Animations */
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+  
+  .animate-bounce-slow {
+    animation: bounce 2s infinite;
+  }
+  
+  .animate-scale-in {
+    animation: scale-in 0.2s ease-out;
+  }
+  
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-4px); }
+  }
+  
+  @keyframes scale-in {
+    0% { transform: scale(0.95); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  
+  /* Gradients */
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+  
+  .gradient-canvas {
+    background: var(--gradient-canvas);
+  }
+  
+  .gradient-sidebar {
+    background: var(--gradient-sidebar);
+  }
+  
+  /* Shadows */
+  .shadow-soft {
+    box-shadow: var(--shadow-soft);
+  }
+  
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+  
+  .shadow-float {
+    box-shadow: var(--shadow-float);
   }
 }
