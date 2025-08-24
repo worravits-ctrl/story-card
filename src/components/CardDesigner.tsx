@@ -697,15 +697,25 @@ export function CardDesigner() {
                 if (!isPreviewMode) setSelectedElement(image.id);
               }}
               onMouseDown={(e) => {
-                if (isPreviewMode || e.target !== e.currentTarget) return;
+                if (isPreviewMode) return;
                 
-                const startX = e.clientX - image.x;
-                const startY = e.clientY - image.y;
+                // Only handle drag if clicking directly on the image container, not resize handles
+                if (e.target !== e.currentTarget && !e.currentTarget.querySelector('img')?.contains(e.target as Node)) return;
+                
+                e.preventDefault();
+                const rect = canvasRef.current?.getBoundingClientRect();
+                if (!rect) return;
+                
+                const startX = e.clientX - rect.left - image.x;
+                const startY = e.clientY - rect.top - image.y;
                 
                 const handleMouseMove = (e: MouseEvent) => {
+                  const newX = Math.max(0, Math.min(currentDesign.width - image.width, e.clientX - rect.left - startX));
+                  const newY = Math.max(0, Math.min(currentDesign.height - image.height, e.clientY - rect.top - startY));
+                  
                   updateImage(image.id, {
-                    x: e.clientX - startX,
-                    y: e.clientY - startY
+                    x: newX,
+                    y: newY
                   });
                 };
                 
