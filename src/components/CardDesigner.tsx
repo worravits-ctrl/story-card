@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,7 +33,9 @@ import {
   Cloud,
   HardDrive,
   Wifi,
-  WifiOff
+  WifiOff,
+  LogOut,
+  Home
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
@@ -101,7 +104,8 @@ const FONT_FAMILIES = [
 ];
 
 export function CardDesigner() {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [saveMode, setSaveMode] = useState<'online' | 'offline'>('online');
   
@@ -326,6 +330,16 @@ export function CardDesigner() {
     }));
     setSelectedElement(null);
     toast.success('ล้างผืนผ้าใบแล้ว');
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      navigate('/');
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toast.error('ไม่สามารถออกจากระบบได้');
+    }
   };
 
   const addText = () => {
@@ -1402,6 +1416,16 @@ export function CardDesigner() {
               <Button onClick={exportAsPDF} variant="secondary" size="sm" className="h-7 text-xs">
                 <FileText className="w-3 h-3 mr-1" />
                 PDF
+              </Button>
+            </div>
+            <div className="grid grid-cols-2 gap-1 mt-2">
+              <Button onClick={() => navigate('/dashboard')} variant="outline" size="sm" className="h-7 text-xs">
+                <Home className="w-3 h-3 mr-1" />
+                Dashboard
+              </Button>
+              <Button onClick={handleSignOut} variant="outline" size="sm" className="h-7 text-xs text-red-600">
+                <LogOut className="w-3 h-3 mr-1" />
+                ออกจากระบบ
               </Button>
             </div>
           </div>

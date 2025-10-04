@@ -2,14 +2,52 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContextSupabase'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Palette, Users, ArrowRight, Star, Zap, Heart } from 'lucide-react'
+import { Palette, Users, ArrowRight, Star, Zap, Heart, LogOut } from 'lucide-react'
 
 const Index = () => {
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, signOut } = useAuth()
+
+  const handleSignOut = async () => {
+    try {
+      await signOut()
+      navigate('/')
+    } catch (error) {
+      console.error('Error signing out:', error)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      {/* Header Navigation */}
+      {user && (
+        <header className="absolute top-0 w-full z-10">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-end items-center h-16">
+              <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate('/dashboard')}
+                  className="text-gray-700 hover:text-blue-600"
+                >
+                  Dashboard
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleSignOut}
+                  className="text-gray-700 hover:text-red-600"
+                >
+                  <LogOut className="w-4 h-4 mr-1" />
+                  ออกจากระบบ
+                </Button>
+              </div>
+            </div>
+          </div>
+        </header>
+      )}
+
       {/* Hero Section */}
       <div className="relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
