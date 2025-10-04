@@ -124,7 +124,7 @@ export default function Dashboard() {
 
               {/* Actions */}
               <div className="flex items-center gap-2">
-                {userProfile.role === 'admin' && (
+                {userProfile.role === 'admin' ? (
                   <Button
                     variant="outline"
                     size="sm"
@@ -132,6 +132,15 @@ export default function Dashboard() {
                   >
                     <Settings className="w-4 h-4 mr-2" />
                     Admin
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate('/setup-admin')}
+                  >
+                    <Settings className="w-4 h-4 mr-2" />
+                    ตั้งค่า Admin
                   </Button>
                 )}
                 <Button

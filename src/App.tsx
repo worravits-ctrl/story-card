@@ -9,6 +9,7 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContextSupabase'
 import AuthPageSupabase from '@/pages/AuthPageSupabase'
 import Dashboard from '@/pages/Dashboard'
 import AdminPanel from '@/pages/AdminPanel'
+import SetupAdmin from '@/pages/SetupAdmin'
 import { CardDesigner } from '@/components/CardDesigner'
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
@@ -98,6 +99,14 @@ const App = () => {
             <AdminRoute>
               <AdminPanel />
             </AdminRoute>
+          } 
+        />
+        <Route 
+          path="/setup-admin" 
+          element={
+            <ProtectedRoute>
+              <SetupAdmin />
+            </ProtectedRoute>
           } 
         />
         <Route path="*" element={<NotFound />} />

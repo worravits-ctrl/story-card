@@ -227,5 +227,57 @@ export const deleteUser = async (userId: string) => {
   if (profileError) throw profileError
 }
 
+// Make first user admin automatically
+export const makeFirstUserAdmin = async () => {
+  try {
+    const { data: users, error } = await supabase
+      .from('users')
+      .select('*')
+      .order('created_at', { ascending: true })
+      .limit(1)
+
+    if (error) throw error
+
+    if (users && users.length > 0 && users[0].role !== 'admin') {
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ role: 'admin' })
+        .eq('id', users[0].id)
+
+      if (updateError) throw updateError
+      console.log('First user promoted to admin:', users[0].email)
+      return true
+    }
+
+    return false
+  } catch (error) {
+    console.error('Error making first user admin:', error)
+    return false
+  }
+}
+
+// Promote current user to admin (for development/setup)
+export const promoteCurrentUserToAdmin = async () => {
+  try {
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    
+    if (authError || !user) {
+      throw new Error('ไม่พบผู้ใช้ที่ล็อกอิน')
+    }
+
+    const { error } = await supabase
+      .from('users')
+      .update({ role: 'admin' })
+      .eq('id', user.id)
+
+    if (error) throw error
+    
+    return true
+  } catch (error) {
+    console.error('Error promoting user to admin:', error)
+    throw error
+  }
+}
+
 // Export the User type as UserProfile for compatibility
 export type UserProfile = User
