@@ -7,6 +7,8 @@ import {
   updateUserRole, 
   deleteUser, 
   deleteCardDesign,
+  clearAuthData,
+  forceRefreshAuth,
   type UserProfile,
   type CardDesign 
 } from '@/lib/supabase'
@@ -252,6 +254,17 @@ export default function AdminPanel() {
               >
                 <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                 รีเฟรช
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  clearAuthData()
+                  window.location.reload()
+                }}
+                title="ล้าง Cache และรีโหลด"
+              >
+                🔄 Clear Cache
               </Button>
             </div>
           </div>

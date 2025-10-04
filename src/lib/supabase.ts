@@ -9,8 +9,15 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
     persistSession: true,
     detectSessionInUrl: true,
     storage: window.localStorage,
-    storageKey: 'supabase.auth.token',
+    storageKey: 'sb-auth-token',
     flowType: 'pkce'
+  },
+  global: {
+    headers: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    }
   }
 })
 
@@ -94,29 +101,79 @@ export const getCurrentUser = async () => {
 }
 
 export const signOut = async () => {
-  const { error } = await supabase.auth.signOut()
+  try {
+    // Force sign out with scope 'global' to clear all sessions
+    const { error } = await supabase.auth.signOut({ scope: 'global' })
+    if (error) console.error('Signout error:', error)
+  } catch (error) {
+    console.error('Error during signout:', error)
+  }
   
-  // Clear all localStorage data
-  localStorage.clear()
+  // Force clear all storage regardless of API response
+  clearAuthData()
   
-  // Clear sessionStorage as well
-  sessionStorage.clear()
-  
-  if (error) throw error
+  // Force reload to ensure clean state
+  setTimeout(() => {
+    window.location.href = '/auth'
+  }, 100)
 }
 
 export const supabaseSignOut = signOut
 
 // Force clear all auth data
 export const clearAuthData = () => {
-  localStorage.removeItem('supabase.auth.token')
-  // Clear Supabase-specific keys
-  Object.keys(localStorage).forEach(key => {
-    if (key.startsWith('sb-') || key.includes('supabase')) {
+  try {
+    // Clear all localStorage
+    localStorage.clear()
+    
+    // Clear sessionStorage
+    sessionStorage.clear()
+    
+    // Clear specific Supabase keys that might remain
+    const keysToRemove = [
+      'supabase.auth.token',
+      'sb-auth-token',
+      'supabase-auth-token'
+    ]
+    
+    keysToRemove.forEach(key => {
       localStorage.removeItem(key)
+      sessionStorage.removeItem(key)
+    })
+    
+    // Clear any remaining sb- prefixed keys
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('sb-') || key.includes('supabase') || key.includes('auth')) {
+        localStorage.removeItem(key)
+      }
+    })
+    
+    // Clear cookies by setting them to expire
+    document.cookie.split(";").forEach(function(c) { 
+      document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+    })
+    
+    console.log('All auth data cleared')
+  } catch (error) {
+    console.error('Error clearing auth data:', error)
+  }
+}
+
+// Add force refresh function
+export const forceRefreshAuth = async () => {
+  try {
+    const { data, error } = await supabase.auth.refreshSession()
+    if (error) {
+      console.error('Refresh error:', error)
+      clearAuthData()
+      window.location.href = '/auth'
     }
-  })
-  sessionStorage.clear()
+    return data
+  } catch (error) {
+    console.error('Force refresh error:', error)
+    clearAuthData()
+    window.location.href = '/auth'
+  }
 }
 
 // Profile Functions

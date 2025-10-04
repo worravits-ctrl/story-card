@@ -126,11 +126,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     setLoading(true)
     try {
-      await supabaseSignOut()
+      // Clear state first
       setUser(null)
       setUserProfile(null)
+      
+      // Then clear auth data (this will redirect)
+      await supabaseSignOut()
     } catch (error: any) {
-      throw new Error(error.message || 'ออกจากระบบไม่สำเร็จ')
+      console.error('Signout error:', error)
+      // Force clear even if error
+      setUser(null)
+      setUserProfile(null)
+      window.location.href = '/auth'
     } finally {
       setLoading(false)
     }
