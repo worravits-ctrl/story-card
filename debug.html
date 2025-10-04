@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Railway Debug Test</h1>
+    <div id="status">Testing...</div>
+    
+    <h2>Tests:</h2>
+    <ul id="tests"></ul>
+    
+    <script>
+        const addTest = (name, result, details = '') => {
+            const li = document.createElement('li');
+            li.className = result ? 'success' : 'error';
+            li.innerHTML = `${name}: ${result ? 'PASS' : 'FAIL'} ${details}`;
+            document.getElementById('tests').appendChild(li);
+        }
+        
+        // Test 1: Basic JavaScript
+        addTest('JavaScript Execution', true, '- Script is running');
+        
+        // Test 2: Fetch CSS
+        fetch('./assets/index-i_-rNmuL.css')
+            .then(response => {
+                addTest('CSS File Loading', response.ok, `- Status: ${response.status}`);
+            })
+            .catch(err => {
+                addTest('CSS File Loading', false, `- Error: ${err.message}`);
+            });
+            
+        // Test 3: Fetch JS
+        fetch('./assets/index-Cbr_VEA-.js')
+            .then(response => {
+                addTest('JS File Loading', response.ok, `- Status: ${response.status}`);
+            })
+            .catch(err => {
+                addTest('JS File Loading', false, `- Error: ${err.message}`);
+            });
+            
+        // Test 4: Console logging
+        console.log('Debug test page loaded');
+        console.log('Location:', window.location);
+        console.log('User Agent:', navigator.userAgent);
+        
+        document.getElementById('status').innerHTML = 
+            '<span class="success">Railway is serving files correctly!</span>';
+    </script>
+</body>
+</html>

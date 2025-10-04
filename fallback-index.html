@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Card Designer - ออกแบบการ์ดสวยงาม</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .container {
+            text-align: center;
+            max-width: 600px;
+        }
+        
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        
+        p {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 1rem;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .error {
+            background: rgba(255, 0, 0, 0.1);
+            border: 1px solid rgba(255, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .debug {
+            margin-top: 20px;
+            text-align: left;
+            background: rgba(0,0,0,0.2);
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+        }
+        
+        button {
+            background: white;
+            color: #667eea;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            margin: 10px;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Card Designer</h1>
+        <p>กำลังโหลดแอพพลิเคชัน...</p>
+        <div class="loading"></div>
+        
+        <div id="app-container">
+            <!-- React app จะ render ที่นี่ -->
+        </div>
+        
+        <div id="error-container" style="display: none;">
+            <div class="error">
+                <h3>❌ เกิดข้อผิดพลาดในการโหลด</h3>
+                <p>กรุณาลองรีเฟรชหน้าใหม่อีกครั้ง</p>
+                <button onclick="location.reload()">รีเฟรชหน้า</button>
+                <button onclick="showDebug()">ดูข้อมูล Debug</button>
+            </div>
+        </div>
+        
+        <div id="debug-container" style="display: none;">
+            <div class="debug">
+                <h4>Debug Information:</h4>
+                <div id="debug-info"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Original React app scripts -->
+    <script type="module" crossorigin src="./assets/index-Cbr_VEA-.js" 
+            onerror="handleScriptError(event)" 
+            onload="handleScriptLoad(event)"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-i_-rNmuL.css" 
+          onerror="handleStyleError(event)">
+
+    <script>
+        let appLoaded = false;
+        let scriptsLoaded = 0;
+        let scriptsTotal = 1;
+        
+        function handleScriptLoad(event) {
+            console.log('Script loaded successfully:', event.target.src);
+            scriptsLoaded++;
+            appLoaded = true;
+            
+            // Hide loading, show app
+            setTimeout(() => {
+                if (document.getElementById('root') && document.getElementById('root').children.length > 0) {
+                    document.querySelector('.container').style.display = 'none';
+                } else {
+                    // React app didn't render, show error
+                    showError('React app ไม่สามารถ render ได้');
+                }
+            }, 2000);
+        }
+        
+        function handleScriptError(event) {
+            console.error('Script failed to load:', event.target.src);
+            showError('ไม่สามารถโหลด JavaScript files ได้');
+        }
+        
+        function handleStyleError(event) {
+            console.error('Style failed to load:', event.target.href);
+            // Don't show error for CSS, just log it
+        }
+        
+        function showError(message) {
+            document.querySelector('.loading').style.display = 'none';
+            document.getElementById('error-container').style.display = 'block';
+            if (message) {
+                document.querySelector('.error p').textContent = message;
+            }
+        }
+        
+        function showDebug() {
+            const debugInfo = document.getElementById('debug-info');
+            debugInfo.innerHTML = `
+                <strong>URL:</strong> ${window.location.href}<br>
+                <strong>Protocol:</strong> ${window.location.protocol}<br>
+                <strong>Host:</strong> ${window.location.host}<br>
+                <strong>Pathname:</strong> ${window.location.pathname}<br>
+                <strong>Scripts Loaded:</strong> ${scriptsLoaded}/${scriptsTotal}<br>
+                <strong>App Loaded:</strong> ${appLoaded}<br>
+                <strong>Root Element:</strong> ${document.getElementById('root') ? 'Found' : 'Missing'}<br>
+                <strong>Root Content:</strong> ${document.getElementById('root') ? document.getElementById('root').innerHTML.length + ' chars' : 'N/A'}<br>
+                <strong>User Agent:</strong> ${navigator.userAgent}<br>
+                <strong>Time:</strong> ${new Date().toLocaleString()}
+            `;
+            document.getElementById('debug-container').style.display = 'block';
+        }
+        
+        // Timeout fallback
+        setTimeout(() => {
+            if (!appLoaded) {
+                console.warn('App failed to load within timeout');
+                showError('แอพโหลดช้าเกินไป กรุณาลองใหม่อีกครั้ง');
+            }
+        }, 10000); // 10 second timeout
+        
+        // Console logging
+        console.log('Fallback index.html loaded');
+        console.log('Location:', window.location.href);
+        console.log('Attempting to load React app...');
+    </script>
+    
+    <!-- Add root div for React -->
+    <div id="root"></div>
+</body>
+</html>

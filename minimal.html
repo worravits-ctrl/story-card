@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Minimal Test</title>
+</head>
+<body>
+    <div id="root">
+        <h1>Loading App...</h1>
+        <div id="debug-info"></div>
+    </div>
+    
+    <script type="module">
+        console.log('Minimal test starting...');
+        
+        // Simple React-like app
+        const debugInfo = document.getElementById('debug-info');
+        debugInfo.innerHTML = `
+            <h2>Debug Information:</h2>
+            <p><strong>Location:</strong> ${window.location.href}</p>
+            <p><strong>Base URL:</strong> ${window.location.origin}</p>
+            <p><strong>Pathname:</strong> ${window.location.pathname}</p>
+            <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
+        `;
+        
+        // Try to load the main app script
+        try {
+            console.log('Attempting to load main app...');
+            import('./assets/index-Cbr_VEA-.js').then(() => {
+                console.log('Main app loaded successfully!');
+                document.getElementById('root').innerHTML = '<h1>Main app should load now...</h1>';
+            }).catch(err => {
+                console.error('Failed to load main app:', err);
+                document.getElementById('root').innerHTML = `
+                    <h1 style="color: red;">Failed to load main app</h1>
+                    <pre>${err.message}</pre>
+                `;
+            });
+        } catch (err) {
+            console.error('Import error:', err);
+            document.getElementById('root').innerHTML = `
+                <h1 style="color: red;">Import Error</h1>
+                <pre>${err.message}</pre>
+            `;
+        }
+    </script>
+</body>
+</html>
