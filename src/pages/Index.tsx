@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/contexts/AuthContextLocal'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Palette, Users, ArrowRight, Star, Zap, Heart } from 'lucide-react'
