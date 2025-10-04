@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContextSupabase'
-import { getUserCardDesigns, deleteCardDesign } from '@/lib/localStorage'
-import type { CardDesign } from '@/lib/localStorage'
+import { getUserCardDesigns, deleteCardDesign, clearAuthData } from '@/lib/supabase'
+import type { CardDesign } from '@/lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -124,7 +124,7 @@ export default function Dashboard() {
 
               {/* Actions */}
               <div className="flex items-center gap-2">
-                {userProfile.role === 'admin' ? (
+                {userProfile.role === 'admin' && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -133,16 +133,18 @@ export default function Dashboard() {
                     <Settings className="w-4 h-4 mr-2" />
                     Admin
                   </Button>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate('/setup-admin')}
-                  >
-                    <Settings className="w-4 h-4 mr-2" />
-                    ตั้งค่า Admin
-                  </Button>
                 )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    clearAuthData()
+                    window.location.reload()
+                  }}
+                  title="ล้างข้อมูล Cache"
+                >
+                  🔄
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
@@ -281,7 +283,7 @@ export default function Dashboard() {
                             style={{ 
                               color: text.color,
                               fontSize: '8px',
-                              fontWeight: text.fontWeight 
+                              fontWeight: text.font_weight 
                             }}
                           >
                             {text.content}

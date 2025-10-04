@@ -7,7 +7,10 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: true,
+    storage: window.localStorage,
+    storageKey: 'supabase.auth.token',
+    flowType: 'pkce'
   }
 })
 
@@ -92,7 +95,28 @@ export const getCurrentUser = async () => {
 
 export const signOut = async () => {
   const { error } = await supabase.auth.signOut()
+  
+  // Clear all localStorage data
+  localStorage.clear()
+  
+  // Clear sessionStorage as well
+  sessionStorage.clear()
+  
   if (error) throw error
+}
+
+export const supabaseSignOut = signOut
+
+// Force clear all auth data
+export const clearAuthData = () => {
+  localStorage.removeItem('supabase.auth.token')
+  // Clear Supabase-specific keys
+  Object.keys(localStorage).forEach(key => {
+    if (key.startsWith('sb-') || key.includes('supabase')) {
+      localStorage.removeItem(key)
+    }
+  })
+  sessionStorage.clear()
 }
 
 // Profile Functions
