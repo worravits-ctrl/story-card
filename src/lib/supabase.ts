@@ -171,30 +171,52 @@ export const deleteCardDesign = async (id: string) => {
 
 // Admin Functions
 export const getAllUsers = async (): Promise<User[]> => {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .order('created_at', { ascending: false })
-  
-  if (error) throw error
-  return data || []
+  try {
+    console.log('Fetching users from profiles table...')
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false })
+    
+    if (error) {
+      console.error('Supabase error in getAllUsers:', error)
+      throw error
+    }
+    
+    console.log('Users fetched:', data?.length || 0, 'users')
+    return data || []
+  } catch (error) {
+    console.error('Error in getAllUsers:', error)
+    throw error
+  }
 }
 
 export const getAllCardDesigns = async () => {
-  const { data, error } = await supabase
-    .from('card_designs')
-    .select(`
-      *,
-      users (
-        id,
-        email,
-        full_name
-      )
-    `)
-    .order('created_at', { ascending: false })
-  
-  if (error) throw error
-  return data
+  try {
+    console.log('Fetching card designs...')
+    const { data, error } = await supabase
+      .from('card_designs')
+      .select(`
+        *,
+        profiles (
+          id,
+          email,
+          full_name
+        )
+      `)
+      .order('created_at', { ascending: false })
+    
+    if (error) {
+      console.error('Supabase error in getAllCardDesigns:', error)
+      throw error
+    }
+    
+    console.log('Card designs fetched:', data?.length || 0, 'designs')
+    return data || []
+  } catch (error) {
+    console.error('Error in getAllCardDesigns:', error)
+    throw error
+  }
 }
 
 export const updateUserRole = async (userId: string, role: 'user' | 'admin') => {

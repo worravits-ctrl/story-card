@@ -63,15 +63,18 @@ export default function AdminPanel() {
   const loadData = async () => {
     try {
       setLoading(true)
+      console.log('Loading admin data...')
       const [usersData, designsData] = await Promise.all([
         getAllUsers(),
         getAllCardDesigns()
       ])
+      console.log('Users data:', usersData)
+      console.log('Designs data:', designsData)
       setUsers(usersData)
       setDesigns(designsData)
     } catch (error) {
       console.error('Error loading admin data:', error)
-      toast.error('ไม่สามารถโหลดข้อมูลได้')
+      toast.error(`ไม่สามารถโหลดข้อมูลได้: ${error.message || 'เกิดข้อผิดพลาด'}`)
     } finally {
       setLoading(false)
     }
