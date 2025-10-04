@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -71,7 +71,7 @@ const CARD_TEMPLATES = [
   { name: 'Greeting Card', width: 400, height: 300 },
   { name: 'Invitation Card', width: 450, height: 600 },
   { name: 'Name Tag', width: 300, height: 150 },
-  { name: 'A4 Card (เต็มพื้นที่)', width: 1190, height: 680 },
+  { name: 'A4 Card (เต็มพื้นที่)', width: 1190, height: 680 }, // Optimized for 2x5 layout on A4
   { name: 'A4 Card (Medium)', width: 200, height: 280 },
   { name: 'Custom', width: 400, height: 300 }
 ];
@@ -92,7 +92,7 @@ export function CardDesigner() {
   const [currentDesign, setCurrentDesign] = useState<CardDesign>({
     id: '1',
     name: 'A4 Full Card',
-    width: 1190,
+    width: 1190, // Optimized for A4 2x5 layout
     height: 680,
     backgroundColor: '#ffffff',
     texts: [],
@@ -104,19 +104,7 @@ export function CardDesigner() {
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
-  const [showA4Layout, setShowA4Layout] = useState(true);
-  
-  // Drag and Drop states
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [dragElement, setDragElement] = useState<string | null>(null);
-  
-  // Resize states
-  const [isResizing, setIsResizing] = useState(false);
-  const [resizeElement, setResizeElement] = useState<string | null>(null);
-  const [resizeHandle, setResizeHandle] = useState<string | null>(null);
-  const [initialSize, setInitialSize] = useState({ width: 0, height: 0 });
-  const [initialMousePos, setInitialMousePos] = useState({ x: 0, y: 0 });
+  const [showA4Layout, setShowA4Layout] = useState(true); // เริ่มต้นแสดง A4 Layout
   
   // A4 layout settings - Fixed 10 cards, 2 cols x 5 rows
   const [a4Settings, setA4Settings] = useState({
@@ -127,7 +115,7 @@ export function CardDesigner() {
     marginLeft: 30,
     marginRight: 30,
     marginBottom: 30,
-    forceLayout: true
+    forceLayout: true // Force 2x5 layout
   });
 
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -269,252 +257,6 @@ export function CardDesigner() {
     setSelectedElement(null);
   };
 
-  // Drag and Drop Functions
-  const handleMouseDown = (e: React.MouseEvent, elementId: string) => {
-    if (isPreviewMode) return;
-    
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
-
-    const scaleX = currentDesign.width / 600; // Canvas display width is 600px
-    const scaleY = currentDesign.height / 430; // Canvas display height is 430px
-    
-    const element = currentDesign.texts.find(t => t.id === elementId) || 
-                   currentDesign.images.find(i => i.id === elementId);
-    
-    if (!element) return;
-
-    const offsetX = (e.clientX - rect.left) * scaleX - element.x;
-    const offsetY = (e.clientY - rect.top) * scaleY - element.y;
-    
-    setDragElement(elementId);
-    setDragOffset({ x: offsetX, y: offsetY });
-    setIsDragging(true);
-    setSelectedElement(elementId);
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging || !dragElement || !canvasRef.current) return;
-    
-    e.preventDefault();
-    
-    const rect = canvasRef.current.getBoundingClientRect();
-    const scaleX = currentDesign.width / 600;
-    const scaleY = currentDesign.height / 430;
-    
-    const newX = Math.max(0, Math.min(
-      currentDesign.width - 10,
-      (e.clientX - rect.left) * scaleX - dragOffset.x
-    ));
-    const newY = Math.max(0, Math.min(
-      currentDesign.height - 10,
-      (e.clientY - rect.top) * scaleY - dragOffset.y
-    ));
-
-    // Update text position
-    const textElement = currentDesign.texts.find(t => t.id === dragElement);
-    if (textElement) {
-      updateText(dragElement, { x: newX, y: newY });
-      return;
-    }
-
-    // Update image position
-    const imageElement = currentDesign.images.find(i => i.id === dragElement);
-    if (imageElement) {
-      updateImage(dragElement, { x: newX, y: newY });
-    }
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-    setDragElement(null);
-    setDragOffset({ x: 0, y: 0 });
-    setIsResizing(false);
-    setResizeElement(null);
-    setResizeHandle(null);
-  };
-
-  // Resize Functions
-  const handleResizeMouseDown = (e: React.MouseEvent, elementId: string, handle: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const element = currentDesign.texts.find(t => t.id === elementId) || 
-                   currentDesign.images.find(i => i.id === elementId);
-    
-    if (!element) return;
-
-    setResizeElement(elementId);
-    setResizeHandle(handle);
-    setIsResizing(true);
-    setInitialMousePos({ x: e.clientX, y: e.clientY });
-    
-    if ('fontSize' in element) {
-      // Text element
-      setInitialSize({ width: element.fontSize, height: element.fontSize });
-    } else {
-      // Image element
-      setInitialSize({ width: element.width, height: element.height });
-    }
-  };
-
-  const handleResizeMouseMove = (e: React.MouseEvent) => {
-    if (!isResizing || !resizeElement || !canvasRef.current) return;
-    
-    e.preventDefault();
-    
-    const deltaX = e.clientX - initialMousePos.x;
-    const deltaY = e.clientY - initialMousePos.y;
-    const scale = Math.min(600/currentDesign.width, 430/currentDesign.height);
-    
-    const scaledDeltaX = deltaX / scale;
-    const scaledDeltaY = deltaY / scale;
-
-    const textElement = currentDesign.texts.find(t => t.id === resizeElement);
-    if (textElement) {
-      // Resize text (fontSize)
-      let newFontSize = initialSize.width;
-      
-      if (resizeHandle === 'se' || resizeHandle === 'sw') {
-        newFontSize = Math.max(8, Math.min(72, initialSize.width + scaledDeltaY * 0.5));
-      } else if (resizeHandle === 'ne' || resizeHandle === 'nw') {
-        newFontSize = Math.max(8, Math.min(72, initialSize.width - scaledDeltaY * 0.5));
-      }
-      
-      updateText(resizeElement, { fontSize: Math.round(newFontSize) });
-      return;
-    }
-
-    const imageElement = currentDesign.images.find(i => i.id === resizeElement);
-    if (imageElement) {
-      // Resize image
-      let newWidth = initialSize.width;
-      let newHeight = initialSize.height;
-      
-      if (resizeHandle === 'se') {
-        newWidth = Math.max(20, initialSize.width + scaledDeltaX);
-        newHeight = Math.max(20, initialSize.height + scaledDeltaY);
-      } else if (resizeHandle === 'sw') {
-        newWidth = Math.max(20, initialSize.width - scaledDeltaX);
-        newHeight = Math.max(20, initialSize.height + scaledDeltaY);
-      } else if (resizeHandle === 'ne') {
-        newWidth = Math.max(20, initialSize.width + scaledDeltaX);
-        newHeight = Math.max(20, initialSize.height - scaledDeltaY);
-      } else if (resizeHandle === 'nw') {
-        newWidth = Math.max(20, initialSize.width - scaledDeltaX);
-        newHeight = Math.max(20, initialSize.height - scaledDeltaY);
-      }
-      
-      updateImage(resizeElement, { 
-        width: Math.round(newWidth), 
-        height: Math.round(newHeight) 
-      });
-    }
-  };
-
-  // Add global mouse event listeners
-  useEffect(() => {
-    const handleGlobalMouseMove = (e: MouseEvent) => {
-      if (isResizing && canvasRef.current) {
-        const deltaX = e.clientX - initialMousePos.x;
-        const deltaY = e.clientY - initialMousePos.y;
-        const scale = Math.min(600/currentDesign.width, 430/currentDesign.height);
-        
-        const scaledDeltaX = deltaX / scale;
-        const scaledDeltaY = deltaY / scale;
-
-        if (resizeElement) {
-          const textElement = currentDesign.texts.find(t => t.id === resizeElement);
-          if (textElement) {
-            let newFontSize = initialSize.width;
-            
-            if (resizeHandle === 'se' || resizeHandle === 'sw') {
-              newFontSize = Math.max(8, Math.min(72, initialSize.width + scaledDeltaY * 0.5));
-            } else if (resizeHandle === 'ne' || resizeHandle === 'nw') {
-              newFontSize = Math.max(8, Math.min(72, initialSize.width - scaledDeltaY * 0.5));
-            }
-            
-            updateText(resizeElement, { fontSize: Math.round(newFontSize) });
-            return;
-          }
-
-          const imageElement = currentDesign.images.find(i => i.id === resizeElement);
-          if (imageElement) {
-            let newWidth = initialSize.width;
-            let newHeight = initialSize.height;
-            
-            if (resizeHandle === 'se') {
-              newWidth = Math.max(20, initialSize.width + scaledDeltaX);
-              newHeight = Math.max(20, initialSize.height + scaledDeltaY);
-            } else if (resizeHandle === 'sw') {
-              newWidth = Math.max(20, initialSize.width - scaledDeltaX);
-              newHeight = Math.max(20, initialSize.height + scaledDeltaY);
-            } else if (resizeHandle === 'ne') {
-              newWidth = Math.max(20, initialSize.width + scaledDeltaX);
-              newHeight = Math.max(20, initialSize.height - scaledDeltaY);
-            } else if (resizeHandle === 'nw') {
-              newWidth = Math.max(20, initialSize.width - scaledDeltaX);
-              newHeight = Math.max(20, initialSize.height - scaledDeltaY);
-            }
-            
-            updateImage(resizeElement, { 
-              width: Math.round(newWidth), 
-              height: Math.round(newHeight) 
-            });
-          }
-        }
-      } else if (isDragging && canvasRef.current) {
-        const rect = canvasRef.current.getBoundingClientRect();
-        const scaleX = currentDesign.width / 600;
-        const scaleY = currentDesign.height / 430;
-        
-        const newX = Math.max(0, Math.min(
-          currentDesign.width - 10,
-          (e.clientX - rect.left) * scaleX - dragOffset.x
-        ));
-        const newY = Math.max(0, Math.min(
-          currentDesign.height - 10,
-          (e.clientY - rect.top) * scaleY - dragOffset.y
-        ));
-
-        if (dragElement) {
-          const textElement = currentDesign.texts.find(t => t.id === dragElement);
-          if (textElement) {
-            updateText(dragElement, { x: newX, y: newY });
-            return;
-          }
-
-          const imageElement = currentDesign.images.find(i => i.id === dragElement);
-          if (imageElement) {
-            updateImage(dragElement, { x: newX, y: newY });
-          }
-        }
-      }
-    };
-
-    const handleGlobalMouseUp = () => {
-      setIsDragging(false);
-      setDragElement(null);
-      setDragOffset({ x: 0, y: 0 });
-      setIsResizing(false);
-      setResizeElement(null);
-      setResizeHandle(null);
-    };
-
-    if (isDragging || isResizing) {
-      document.addEventListener('mousemove', handleGlobalMouseMove);
-      document.addEventListener('mouseup', handleGlobalMouseUp);
-    }
-
-    return () => {
-      document.removeEventListener('mousemove', handleGlobalMouseMove);
-      document.removeEventListener('mouseup', handleGlobalMouseUp);
-    };
-  }, [isDragging, isResizing, dragElement, resizeElement, dragOffset, resizeHandle, initialSize, initialMousePos, currentDesign.width, currentDesign.height]);
-
   const exportAsPNG = async () => {
     if (!canvasRef.current) return;
     
@@ -575,8 +317,8 @@ export function CardDesigner() {
         format: 'a4'
       });
       
-      const imgWidth = 210;
-      const imgHeight = 297;
+      const imgWidth = 210; // A4 width in mm
+      const imgHeight = 297; // A4 height in mm
       
       pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, imgWidth, imgHeight);
       pdf.save(`${currentDesign.name}_A4_Layout.pdf`);
@@ -604,6 +346,7 @@ export function CardDesigner() {
             ]);
             toast.success('คัดลอกภาพไปยังคลิปบอร์ดแล้ว!');
           } catch (err) {
+            // Fallback for browsers that don't support clipboard API
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
@@ -619,16 +362,20 @@ export function CardDesigner() {
     }
   };
 
+  // Calculate A4 layout - Force 2x5 for 10 cards
   const calculateA4Layout = () => {
     const { cardCount, rowGap, columnGap, marginLeft, marginRight, marginTop, marginBottom, forceLayout } = a4Settings;
     
     if (forceLayout && cardCount === 10) {
+      // Force 2 columns, 5 rows for optimal A4 usage
       const availableWidth = A4_DIMENSIONS.width - marginLeft - marginRight;
       const availableHeight = A4_DIMENSIONS.height - marginTop - marginBottom;
       
+      // Calculate optimal card size to fill A4
       const optimalCardWidth = Math.floor((availableWidth - columnGap) / 2);
       const optimalCardHeight = Math.floor((availableHeight - 4 * rowGap) / 5);
       
+      // Update card design to optimal size
       if (currentDesign.width !== optimalCardWidth || currentDesign.height !== optimalCardHeight) {
         setCurrentDesign(prev => ({
           ...prev,
@@ -640,13 +387,31 @@ export function CardDesigner() {
       return { rows: 5, cols: 2, optimalCardWidth, optimalCardHeight };
     }
     
-    return { rows: 5, cols: 2 };
+    // Fallback to original calculation
+    const availableWidth = A4_DIMENSIONS.width - marginLeft - marginRight;
+    const availableHeight = A4_DIMENSIONS.height - marginTop - marginBottom;
+    
+    let bestLayout = { rows: 1, cols: 1 };
+    
+    for (let cols = 1; cols <= 5; cols++) {
+      const rows = Math.ceil(cardCount / cols);
+      const totalCardWidth = cols * currentDesign.width + (cols - 1) * columnGap;
+      const totalCardHeight = rows * currentDesign.height + (rows - 1) * rowGap;
+      
+      if (totalCardWidth <= availableWidth && totalCardHeight <= availableHeight) {
+        bestLayout = { rows, cols };
+      }
+    }
+    
+    return bestLayout;
   };
 
   const printCard = () => {
+    // Create a new window for printing with A4 layout
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
+    // Generate the same HTML structure as A4 canvas
     const availableWidth = A4_DIMENSIONS.width - a4Settings.marginLeft - a4Settings.marginRight;
     const availableHeight = A4_DIMENSIONS.height - a4Settings.marginTop - a4Settings.marginBottom;
     const cardWidth = Math.floor((availableWidth - a4Settings.columnGap) / 2);
@@ -659,6 +424,7 @@ export function CardDesigner() {
       const x = a4Settings.marginLeft + col * (cardWidth + a4Settings.columnGap);
       const y = a4Settings.marginTop + row * (cardHeight + a4Settings.rowGap);
 
+      // Generate text elements HTML
       const textsHTML = currentDesign.texts.map(text => `
         <div style="
           position: absolute;
@@ -672,6 +438,7 @@ export function CardDesigner() {
         ">${text.content}</div>
       `).join('');
 
+      // Generate image elements HTML
       const imagesHTML = currentDesign.images.map(image => `
         <div style="
           position: absolute;
@@ -758,6 +525,7 @@ export function CardDesigner() {
             ${cardsHTML}
           </div>
           <script>
+            // Auto print after page loads
             window.onload = function() {
               setTimeout(function() {
                 window.print();
@@ -771,6 +539,7 @@ export function CardDesigner() {
     printWindow.document.write(printHTML);
     printWindow.document.close();
     
+    // Wait for images to load then print
     setTimeout(() => {
       printWindow.print();
       printWindow.close();
@@ -785,34 +554,21 @@ export function CardDesigner() {
   return (
     <div className="min-h-screen bg-background flex">
       {/* Sidebar */}
-      <div className="w-96 sidebar-gradient border-r border-border custom-scrollbar overflow-y-auto">
-        <div className="p-4 space-y-4">
+      <div className="w-80 sidebar-gradient border-r border-border custom-scrollbar overflow-y-auto">
+        <div className="p-6 space-y-6">
           {/* Header */}
-          <div className="space-y-3">
-            <div className="text-center">
-              <h1 className="text-xl font-bold gradient-primary bg-clip-text text-transparent">
-                Card Designer
-              </h1>
-              <p className="text-xs text-muted-foreground">สร้างการ์ดสวยงามได้อย่างง่ายดาย</p>
-            </div>
-            <div className="bg-blue-50 p-2 rounded-md border border-blue-200">
-              <p className="text-xs font-medium text-blue-800 mb-1">💡 วิธีใช้:</p>
-              <div className="grid grid-cols-1 gap-1">
-                <p className="text-xs text-blue-700">🖱️ ลาก → ย้าย</p>
-                <p className="text-xs text-blue-700">🔵 ลากจุด → ขยาย</p>
-                <p className="text-xs text-blue-700">👆 คลิก → แก้ไข</p>
-              </div>
-            </div>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-bold gradient-primary bg-clip-text text-transparent">
+              Card Designer
+            </h1>
+            <p className="text-sm text-muted-foreground">สร้างการ์ดสวยงามได้อย่างง่ายดาย</p>
           </div>
 
           <Separator />
 
           {/* Template Selection */}
-          <div className="space-y-3">
-            <Label className="text-sm font-semibold flex items-center gap-2">
-              <Settings className="w-4 h-4" />
-              เทมเพลต
-            </Label>
+          <div className="space-y-4">
+            <Label className="text-sm font-semibold">เลือกเทมเพลต</Label>
             <Select 
               value={`${currentDesign.width}x${currentDesign.height}`}
               onValueChange={(value) => {
@@ -840,79 +596,66 @@ export function CardDesigner() {
           </div>
 
           {/* Card Settings */}
-          <div className="space-y-3">
-            <Label className="text-sm font-semibold flex items-center gap-2">
-              <Palette className="w-4 h-4" />
-              การตั้งค่าการ์ด
-            </Label>
-            <Card>
-              <CardContent className="p-3 space-y-3">
+          <div className="space-y-4">
+            <Label className="text-sm font-semibold">การตั้งค่าการ์ด</Label>
+            <div className="space-y-3">
+              <div>
+                <Label className="text-xs text-muted-foreground">ชื่อการ์ด</Label>
+                <Input
+                  value={currentDesign.name}
+                  onChange={(e) => setCurrentDesign(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="ชื่อการ์ด"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <Label className="text-xs text-muted-foreground">ชื่อการ์ด</Label>
+                  <Label className="text-xs text-muted-foreground">ความกว้าง</Label>
                   <Input
-                    value={currentDesign.name}
-                    onChange={(e) => setCurrentDesign(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="ชื่อการ์ด"
-                    className="h-8"
+                    type="number"
+                    value={currentDesign.width}
+                    onChange={(e) => setCurrentDesign(prev => ({ ...prev, width: parseInt(e.target.value) || 400 }))}
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <Label className="text-xs text-muted-foreground">กว้าง</Label>
-                    <Input
-                      type="number"
-                      value={currentDesign.width}
-                      onChange={(e) => setCurrentDesign(prev => ({ ...prev, width: parseInt(e.target.value) || 400 }))}
-                      className="h-8"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs text-muted-foreground">สูง</Label>
-                    <Input
-                      type="number"
-                      value={currentDesign.height}
-                      onChange={(e) => setCurrentDesign(prev => ({ ...prev, height: parseInt(e.target.value) || 300 }))}
-                      className="h-8"
-                    />
-                  </div>
-                </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">สีพื้นหลัง</Label>
+                  <Label className="text-xs text-muted-foreground">ความสูง</Label>
                   <Input
-                    type="color"
-                    value={currentDesign.backgroundColor}
-                    onChange={(e) => setCurrentDesign(prev => ({ ...prev, backgroundColor: e.target.value }))}
-                    className="h-8"
+                    type="number"
+                    value={currentDesign.height}
+                    onChange={(e) => setCurrentDesign(prev => ({ ...prev, height: parseInt(e.target.value) || 300 }))}
                   />
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">สีพื้นหลัง</Label>
+                <Input
+                  type="color"
+                  value={currentDesign.backgroundColor}
+                  onChange={(e) => setCurrentDesign(prev => ({ ...prev, backgroundColor: e.target.value }))}
+                />
+              </div>
+            </div>
           </div>
 
           <Separator />
 
           {/* Text Controls */}
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <Label className="text-sm font-semibold flex items-center gap-2">
-                <Type className="w-4 h-4" />
-                ข้อความ ({currentDesign.texts.length}/5)
-              </Label>
+              <Label className="text-sm font-semibold">ข้อความ ({currentDesign.texts.length}/5)</Label>
               <Button 
                 size="sm" 
                 onClick={addText}
                 disabled={currentDesign.texts.length >= 5}
                 variant="outline"
-                className="h-7 px-2"
               >
-                <Plus className="w-3 h-3 mr-1" />
+                <Plus className="w-4 h-4 mr-1" />
                 เพิ่ม
               </Button>
             </div>
 
             {selectedTextElement && (
-              <Card className="border-blue-200">
-                <CardContent className="p-3 space-y-2">
+              <Card>
+                <CardContent className="p-4 space-y-3">
                   <div>
                     <Label className="text-xs text-muted-foreground">เนื้อหา</Label>
                     <Textarea
@@ -920,7 +663,6 @@ export function CardDesigner() {
                       onChange={(e) => updateText(selectedTextElement.id, { content: e.target.value })}
                       placeholder="ใส่ข้อความ..."
                       rows={2}
-                      className="text-sm"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
@@ -930,12 +672,12 @@ export function CardDesigner() {
                         value={selectedTextElement.fontFamily}
                         onValueChange={(value) => updateText(selectedTextElement.id, { fontFamily: value })}
                       >
-                        <SelectTrigger className="h-8 text-xs">
+                        <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           {FONT_FAMILIES.map((font) => (
-                            <SelectItem key={font} value={font} className="text-xs">{font}</SelectItem>
+                            <SelectItem key={font} value={font}>{font}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -948,7 +690,6 @@ export function CardDesigner() {
                         onChange={(e) => updateText(selectedTextElement.id, { fontSize: parseInt(e.target.value) || 16 })}
                         min="8"
                         max="72"
-                        className="h-8"
                       />
                     </div>
                   </div>
@@ -958,19 +699,17 @@ export function CardDesigner() {
                       type="color"
                       value={selectedTextElement.color}
                       onChange={(e) => updateText(selectedTextElement.id, { color: e.target.value })}
-                      className="h-8"
                     />
                   </div>
-                  <div className="flex gap-1">
+                  <div className="flex gap-2">
                     <Button
                       size="sm"
                       variant={selectedTextElement.fontWeight === 'bold' ? 'default' : 'outline'}
                       onClick={() => updateText(selectedTextElement.id, { 
                         fontWeight: selectedTextElement.fontWeight === 'bold' ? 'normal' : 'bold' 
                       })}
-                      className="h-7 px-2"
                     >
-                      <Type className="w-3 h-3" />
+                      <Type className="w-4 h-4" />
                     </Button>
                     <Button
                       size="sm"
@@ -978,17 +717,15 @@ export function CardDesigner() {
                       onClick={() => updateText(selectedTextElement.id, { 
                         fontStyle: selectedTextElement.fontStyle === 'italic' ? 'normal' : 'italic' 
                       })}
-                      className="h-7 px-2"
                     >
-                      <em className="text-xs">I</em>
+                      <em>I</em>
                     </Button>
                     <Button
                       size="sm"
                       variant="destructive"
                       onClick={() => deleteText(selectedTextElement.id)}
-                      className="h-7 px-2 ml-auto"
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
                 </CardContent>
@@ -999,20 +736,16 @@ export function CardDesigner() {
           <Separator />
 
           {/* Image Controls */}
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <Label className="text-sm font-semibold flex items-center gap-2">
-                <ImageIcon className="w-4 h-4" />
-                รูปภาพ ({currentDesign.images.length}/3)
-              </Label>
+              <Label className="text-sm font-semibold">รูปภาพ ({currentDesign.images.length}/3)</Label>
               <Button 
                 size="sm" 
                 onClick={() => fileInputRef.current?.click()}
                 disabled={currentDesign.images.length >= 3}
                 variant="outline"
-                className="h-7 px-2"
               >
-                <Upload className="w-3 h-3 mr-1" />
+                <Upload className="w-4 h-4 mr-1" />
                 อัปโหลด
               </Button>
             </div>
@@ -1026,30 +759,28 @@ export function CardDesigner() {
             />
 
             {selectedImageElement && (
-              <Card className="border-green-200">
-                <CardContent className="p-3 space-y-2">
+              <Card>
+                <CardContent className="p-4 space-y-3">
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <Label className="text-xs text-muted-foreground">กว้าง</Label>
+                      <Label className="text-xs text-muted-foreground">ความกว้าง</Label>
                       <Input
                         type="number"
                         value={selectedImageElement.width}
                         onChange={(e) => updateImage(selectedImageElement.id, { width: parseInt(e.target.value) || 100 })}
-                        className="h-8"
                       />
                     </div>
                     <div>
-                      <Label className="text-xs text-muted-foreground">สูง</Label>
+                      <Label className="text-xs text-muted-foreground">ความสูง</Label>
                       <Input
                         type="number"
                         value={selectedImageElement.height}
                         onChange={(e) => updateImage(selectedImageElement.id, { height: parseInt(e.target.value) || 100 })}
-                        className="h-8"
                       />
                     </div>
                   </div>
                   <div>
-                    <Label className="text-xs text-muted-foreground mb-1 block">ความโปร่งใส: {Math.round(selectedImageElement.opacity * 100)}%</Label>
+                    <Label className="text-xs text-muted-foreground mb-2 block">ความโปร่งใส: {Math.round(selectedImageElement.opacity * 100)}%</Label>
                     <Slider
                       value={[selectedImageElement.opacity]}
                       onValueChange={([value]) => updateImage(selectedImageElement.id, { opacity: value })}
@@ -1063,10 +794,10 @@ export function CardDesigner() {
                     size="sm"
                     variant="destructive"
                     onClick={() => deleteImage(selectedImageElement.id)}
-                    className="w-full h-7"
+                    className="w-full"
                   >
-                    <Trash2 className="w-3 h-3 mr-1" />
-                    ลบรูป
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    ลบรูปภาพ
                   </Button>
                 </CardContent>
               </Card>
@@ -1076,44 +807,44 @@ export function CardDesigner() {
           <Separator />
 
           {/* A4 Layout Settings */}
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <Label className="text-sm font-semibold text-blue-600 flex items-center gap-2">
-                <Layout className="w-4 h-4" />
-                A4 เลย์เอาต์ ({a4Settings.cardCount})
-              </Label>
+              <Label className="text-sm font-semibold text-blue-600">📄 เลย์เอาต์ A4 ({a4Settings.cardCount} ภาพ)</Label>
               <Button 
                 size="sm" 
                 variant={showA4Layout ? "default" : "outline"}
                 onClick={() => setShowA4Layout(!showA4Layout)}
-                className={`h-7 px-2 ${showA4Layout ? "bg-blue-500 hover:bg-blue-600" : "border-blue-500 text-blue-600 hover:bg-blue-50"}`}
+                className={showA4Layout ? "bg-blue-500 hover:bg-blue-600" : "border-blue-500 text-blue-600 hover:bg-blue-50"}
               >
-                <Layout className="w-3 h-3 mr-1" />
-                {showA4Layout ? 'ซ่อน' : 'แสดง'}
+                <Layout className="w-4 h-4 mr-1" />
+                {showA4Layout ? 'ซ่อน A4' : 'แสดง A4'}
               </Button>
             </div>
 
             {showA4Layout && (
               <Card className="border-green-200 bg-green-50/50">
-                <CardContent className="p-3 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs">
-                      🎯 2×5 = 10 ภาพ
+                <CardContent className="p-4 space-y-3">
+                  <div className="mb-2 flex items-center justify-between">
+                    <Badge variant="secondary" className="bg-green-100 text-green-800">
+                      🎯 A4 เต็มพื้นที่ (2×5)
                     </Badge>
-                    <Badge variant="outline" className="text-green-700 border-green-300 text-xs">
-                      เต็ม A4
+                    <Badge variant="outline" className="text-green-700 border-green-300">
+                      10 ภาพคงที่
                     </Badge>
                   </div>
                   
-                  <div className="p-2 bg-green-100 rounded border border-green-200">
+                  <div className="p-3 bg-green-100 rounded-lg border border-green-200">
+                    <div className="text-xs font-bold text-green-800 mb-2">�️ โหมดพิมพ์เต็มพื้นที่:</div>
                     <div className="text-xs text-green-700">
-                      📐 {currentDesign.width}×{currentDesign.height}px • 🖨️ 2 คอลัมน์×5 แถว
+                      • การ์ดขนาด: <span className="font-bold">{currentDesign.width} × {currentDesign.height} px</span><br/>
+                      • จัดเรียง: <span className="font-bold">2 คอลัมน์ × 5 แถว = 10 ภาพ</span><br/>
+                      • ใช้พื้นที่: <span className="font-bold">เกือบเต็ม A4</span>
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-1">
+                  <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <Label className="text-xs text-green-700">↕️ แถว</Label>
+                      <Label className="text-xs font-semibold text-green-700">↕️ ระยะห่างแถว (px)</Label>
                       <Input
                         type="number"
                         min="5"
@@ -1123,11 +854,11 @@ export function CardDesigner() {
                           ...prev, 
                           rowGap: parseInt(e.target.value) || 15 
                         }))}
-                        className="border-green-300 focus:border-green-500 h-7 text-xs"
+                        className="border-green-300 focus:border-green-500"
                       />
                     </div>
                     <div>
-                      <Label className="text-xs text-green-700">↔️ คอลัมน์</Label>
+                      <Label className="text-xs font-semibold text-green-700">↔️ ระยะห่างคอลัมน์ (px)</Label>
                       <Input
                         type="number"
                         min="5"
@@ -1137,13 +868,13 @@ export function CardDesigner() {
                           ...prev, 
                           columnGap: parseInt(e.target.value) || 15 
                         }))}
-                        className="border-green-300 focus:border-green-500 h-7 text-xs"
+                        className="border-green-300 focus:border-green-500"
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-4 gap-1">
+                  <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <Label className="text-xs text-green-700">⬅️</Label>
+                      <Label className="text-xs font-semibold text-green-700">⬅️ ขอบซ้าย (px)</Label>
                       <Input
                         type="number"
                         min="10"
@@ -1153,11 +884,11 @@ export function CardDesigner() {
                           ...prev, 
                           marginLeft: parseInt(e.target.value) || 30 
                         }))}
-                        className="border-green-300 focus:border-green-500 h-7 text-xs"
+                        className="border-green-300 focus:border-green-500"
                       />
                     </div>
                     <div>
-                      <Label className="text-xs text-green-700">➡️</Label>
+                      <Label className="text-xs font-semibold text-green-700">➡️ ขอบขวา (px)</Label>
                       <Input
                         type="number"
                         min="10"
@@ -1167,11 +898,13 @@ export function CardDesigner() {
                           ...prev, 
                           marginRight: parseInt(e.target.value) || 30 
                         }))}
-                        className="border-green-300 focus:border-green-500 h-7 text-xs"
+                        className="border-green-300 focus:border-green-500"
                       />
                     </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <Label className="text-xs text-green-700">⬆️</Label>
+                      <Label className="text-xs font-semibold text-green-700">⬆️ ขอบบน (px)</Label>
                       <Input
                         type="number"
                         min="10"
@@ -1181,11 +914,11 @@ export function CardDesigner() {
                           ...prev, 
                           marginTop: parseInt(e.target.value) || 30 
                         }))}
-                        className="border-green-300 focus:border-green-500 h-7 text-xs"
+                        className="border-green-300 focus:border-green-500"
                       />
                     </div>
                     <div>
-                      <Label className="text-xs text-green-700">⬇️</Label>
+                      <Label className="text-xs font-semibold text-green-700">⬇️ ขอบล่าง (px)</Label>
                       <Input
                         type="number"
                         min="10"
@@ -1195,19 +928,18 @@ export function CardDesigner() {
                           ...prev, 
                           marginBottom: parseInt(e.target.value) || 30 
                         }))}
-                        className="border-green-300 focus:border-green-500 h-7 text-xs"
+                        className="border-green-300 focus:border-green-500"
                       />
                     </div>
                   </div>
-                  
-                  <div className="grid grid-cols-2 gap-1">
-                    <Button onClick={exportA4AsPDF} variant="default" size="sm" className="bg-green-600 hover:bg-green-700 text-white h-7 text-xs">
-                      <FileText className="w-3 h-3 mr-1" />
-                      PDF
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button onClick={exportA4AsPDF} variant="default" size="sm" className="bg-green-600 hover:bg-green-700 text-white">
+                      <FileText className="w-4 h-4 mr-1" />
+                      PDF A4
                     </Button>
-                    <Button onClick={printCard} variant="outline" size="sm" className="border-green-600 text-green-600 hover:bg-green-50 h-7 text-xs">
-                      <Printer className="w-3 h-3 mr-1" />
-                      พิมพ์
+                    <Button onClick={printCard} variant="outline" size="sm" className="border-green-600 text-green-600 hover:bg-green-50">
+                      <Printer className="w-4 h-4 mr-1" />
+                      พิมพ์ A4
                     </Button>
                   </div>
                 </CardContent>
@@ -1218,33 +950,35 @@ export function CardDesigner() {
           <Separator />
 
           {/* Action Buttons */}
-          <div className="space-y-2">
-            <Label className="text-sm font-semibold flex items-center gap-2">
-              <Settings className="w-4 h-4" />
-              การจัดการ
-            </Label>
-            <div className="grid grid-cols-2 gap-1">
-              <Button onClick={saveDesign} variant="default" className="h-8 text-xs">
-                <Save className="w-3 h-3 mr-1" />
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              <Button onClick={saveDesign} variant="default">
+                <Save className="w-4 h-4 mr-1" />
                 บันทึก
               </Button>
-              <Button onClick={clearCanvas} variant="outline" className="h-8 text-xs">
-                <RotateCcw className="w-3 h-3 mr-1" />
+              <Button onClick={clearCanvas} variant="outline">
+                <RotateCcw className="w-4 h-4 mr-1" />
                 ล้าง
               </Button>
             </div>
-            <div className="grid grid-cols-3 gap-1">
-              <Button onClick={copyCardImage} variant="secondary" size="sm" className="h-7 text-xs">
-                <Copy className="w-3 h-3 mr-1" />
+            <div className="grid grid-cols-2 gap-2">
+              <Button onClick={copyCardImage} variant="secondary" size="sm">
+                <Copy className="w-4 h-4 mr-1" />
                 คัดลอก
               </Button>
-              <Button onClick={exportAsPNG} variant="secondary" size="sm" className="h-7 text-xs">
-                <FileImage className="w-3 h-3 mr-1" />
+              <Button onClick={exportAsPNG} variant="secondary" size="sm">
+                <FileImage className="w-4 h-4 mr-1" />
                 PNG
               </Button>
-              <Button onClick={exportAsPDF} variant="secondary" size="sm" className="h-7 text-xs">
-                <FileText className="w-3 h-3 mr-1" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Button onClick={exportAsPDF} variant="secondary" size="sm">
+                <FileText className="w-4 h-4 mr-1" />
                 PDF
+              </Button>
+              <Button onClick={printCard} variant="secondary" size="sm" className="bg-green-100 hover:bg-green-200 text-green-800 border-green-300">
+                <Printer className="w-4 h-4 mr-1" />
+                Print A4
               </Button>
             </div>
           </div>
@@ -1252,20 +986,17 @@ export function CardDesigner() {
           <Separator />
 
           {/* Saved Designs */}
-          <div className="space-y-3">
-            <Label className="text-sm font-semibold flex items-center gap-2">
-              <Save className="w-4 h-4" />
-              การ์ดที่บันทึก ({savedDesigns.length})
-            </Label>
-            <ScrollArea className="h-32">
-              <div className="space-y-1">
+          <div className="space-y-4">
+            <Label className="text-sm font-semibold">การ์ดที่บันทึก</Label>
+            <ScrollArea className="h-40">
+              <div className="space-y-2">
                 {savedDesigns.map((design) => (
-                  <Card key={design.id} className="p-2 cursor-pointer hover:shadow-md transition-shadow">
+                  <Card key={design.id} className="p-3 cursor-pointer hover:shadow-md transition-shadow">
                     <div className="flex items-center justify-between">
                       <div className="flex-1" onClick={() => loadDesign(design)}>
-                        <p className="text-xs font-medium truncate">{design.name}</p>
+                        <p className="text-sm font-medium">{design.name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {design.width}×{design.height} • {design.texts.length}T • {design.images.length}I
+                          {design.width}×{design.height} • {design.texts.length} ข้อความ • {design.images.length} รูป
                         </p>
                       </div>
                       <Button
@@ -1275,15 +1006,14 @@ export function CardDesigner() {
                           e.stopPropagation();
                           deleteDesign(design.id);
                         }}
-                        className="h-6 w-6 p-0"
                       >
-                        <Trash2 className="w-3 h-3" />
+                        <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
                   </Card>
                 ))}
                 {savedDesigns.length === 0 && (
-                  <p className="text-xs text-muted-foreground text-center py-3">
+                  <p className="text-sm text-muted-foreground text-center py-4">
                     ยังไม่มีการ์ดที่บันทึก
                   </p>
                 )}
@@ -1294,8 +1024,8 @@ export function CardDesigner() {
       </div>
 
       {/* Canvas Area */}
-      <div className="flex-1 p-6 canvas-area min-h-screen overflow-auto">
-        <div className="mb-6 flex items-center gap-4 flex-wrap justify-center">
+      <div className="flex-1 p-8 canvas-area min-h-screen flex flex-col items-center justify-center">
+        <div className="mb-6 flex items-center gap-4 flex-wrap">
           <Button
             variant={isPreviewMode ? "outline" : "default"}
             onClick={() => setIsPreviewMode(!isPreviewMode)}
@@ -1313,7 +1043,7 @@ export function CardDesigner() {
           )}
         </div>
 
-        <div className="flex flex-col xl:flex-row gap-8 items-start justify-center w-full min-h-[1200px]">
+        <div className="flex gap-6 items-start justify-center w-full">
           {/* Single Card Canvas */}
           <div className="flex flex-col items-center">
             <h3 className="text-xl font-bold mb-4 text-blue-700">🎨 การ์ดตัวอย่าง</h3>
@@ -1322,23 +1052,18 @@ export function CardDesigner() {
                 ref={canvasRef}
                 className="relative shadow-2xl rounded-xl overflow-hidden border-4 border-blue-200"
                 style={{
-                  width: `600px`,
-                  height: `430px`,
+                  width: `500px`, // Fixed larger size
+                  height: `360px`,
                   backgroundColor: currentDesign.backgroundColor,
                 }}
-                onClick={() => !isDragging && !isResizing && setSelectedElement(null)}
-                onMouseMove={(e) => {
-                  handleMouseMove(e);
-                  handleResizeMouseMove(e);
-                }}
-                onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseUp}
+                onClick={() => setSelectedElement(null)}
               >
+                {/* Container for scaled content */}
                 <div
                   style={{
                     width: `${currentDesign.width}px`,
                     height: `${currentDesign.height}px`,
-                    transform: `scale(${Math.min(600/currentDesign.width, 430/currentDesign.height)})`,
+                    transform: `scale(${Math.min(500/currentDesign.width, 360/currentDesign.height)})`,
                     transformOrigin: 'top left',
                     position: 'absolute'
                   }}
@@ -1348,8 +1073,8 @@ export function CardDesigner() {
                     <div
                       key={text.id}
                       className={`draggable-text ${selectedElement === text.id ? 'selected' : ''} ${
-                        isPreviewMode ? 'pointer-events-none border-transparent' : 'cursor-move'
-                      } ${isDragging && dragElement === text.id ? 'dragging' : ''}`}
+                        isPreviewMode ? 'pointer-events-none border-transparent' : ''
+                      }`}
                       style={{
                         left: `${text.x}px`,
                         top: `${text.y}px`,
@@ -1358,42 +1083,13 @@ export function CardDesigner() {
                         color: text.color,
                         fontWeight: text.fontWeight,
                         fontStyle: text.fontStyle,
-                        userSelect: 'none',
-                        zIndex: isDragging && dragElement === text.id ? 1000 : 1
                       }}
-                      onMouseDown={(e) => handleMouseDown(e, text.id)}
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (!isPreviewMode && !isDragging) setSelectedElement(text.id);
+                        if (!isPreviewMode) setSelectedElement(text.id);
                       }}
                     >
                       {text.content}
-                      
-                      {/* Text Resize Handles */}
-                      {selectedElement === text.id && !isPreviewMode && (
-                        <>
-                          <div
-                            className="absolute -bottom-2 -right-2 w-4 h-4 bg-primary border-2 border-background rounded-full cursor-se-resize hover:bg-primary/80"
-                            onMouseDown={(e) => handleResizeMouseDown(e, text.id, 'se')}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                          <div
-                            className="absolute -top-2 -right-2 w-4 h-4 bg-primary border-2 border-background rounded-full cursor-ne-resize hover:bg-primary/80"
-                            onMouseDown={(e) => handleResizeMouseDown(e, text.id, 'ne')}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                          <div
-                            className="absolute -bottom-2 -left-2 w-4 h-4 bg-primary border-2 border-background rounded-full cursor-sw-resize hover:bg-primary/80"
-                            onMouseDown={(e) => handleResizeMouseDown(e, text.id, 'sw')}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                          <div
-                            className="absolute -top-2 -left-2 w-4 h-4 bg-primary border-2 border-background rounded-full cursor-nw-resize hover:bg-primary/80"
-                            onMouseDown={(e) => handleResizeMouseDown(e, text.id, 'nw')}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                        </>
-                      )}
                     </div>
                   ))}
 
@@ -1402,21 +1098,18 @@ export function CardDesigner() {
                     <div
                       key={image.id}
                       className={`draggable-image ${selectedElement === image.id ? 'selected' : ''} ${
-                        isPreviewMode ? 'pointer-events-none border-transparent' : 'cursor-move'
-                      } ${isDragging && dragElement === image.id ? 'dragging' : ''}`}
+                        isPreviewMode ? 'pointer-events-none border-transparent' : ''
+                      }`}
                       style={{
                         left: `${image.x}px`,
                         top: `${image.y}px`,
                         width: `${image.width}px`,
                         height: `${image.height}px`,
                         opacity: image.opacity,
-                        userSelect: 'none',
-                        zIndex: isDragging && dragElement === image.id ? 1000 : 1
                       }}
-                      onMouseDown={(e) => handleMouseDown(e, image.id)}
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (!isPreviewMode && !isDragging) setSelectedElement(image.id);
+                        if (!isPreviewMode) setSelectedElement(image.id);
                       }}
                     >
                       <img 
@@ -1426,28 +1119,22 @@ export function CardDesigner() {
                         draggable={false}
                       />
                       
-                      {/* Image Resize Handles */}
+                      {/* Resize Handles - Only show when selected and not in preview mode */}
                       {selectedElement === image.id && !isPreviewMode && (
                         <>
                           <div
-                            className="absolute -top-2 -left-2 w-4 h-4 bg-primary border-2 border-background rounded-full cursor-nw-resize hover:bg-primary/80"
-                            onMouseDown={(e) => handleResizeMouseDown(e, image.id, 'nw')}
-                            onClick={(e) => e.stopPropagation()}
+                            className="absolute -top-1 -left-1 w-3 h-3 bg-primary border border-background rounded-full cursor-nw-resize"
+                            onMouseDown={(e) => {
+                              e.stopPropagation();
+                              // Handle resize logic here
+                            }}
                           />
                           <div
-                            className="absolute -top-2 -right-2 w-4 h-4 bg-primary border-2 border-background rounded-full cursor-ne-resize hover:bg-primary/80"
-                            onMouseDown={(e) => handleResizeMouseDown(e, image.id, 'ne')}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                          <div
-                            className="absolute -bottom-2 -left-2 w-4 h-4 bg-primary border-2 border-background rounded-full cursor-sw-resize hover:bg-primary/80"
-                            onMouseDown={(e) => handleResizeMouseDown(e, image.id, 'sw')}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                          <div
-                            className="absolute -bottom-2 -right-2 w-4 h-4 bg-primary border-2 border-background rounded-full cursor-se-resize hover:bg-primary/80"
-                            onMouseDown={(e) => handleResizeMouseDown(e, image.id, 'se')}
-                            onClick={(e) => e.stopPropagation()}
+                            className="absolute -bottom-1 -right-1 w-3 h-3 bg-primary border border-background rounded-full cursor-se-resize"
+                            onMouseDown={(e) => {
+                              e.stopPropagation();
+                              // Handle resize logic here
+                            }}
                           />
                         </>
                       )}
@@ -1461,13 +1148,13 @@ export function CardDesigner() {
                         <Palette className="w-12 h-12 mx-auto opacity-50" />
                         <p className="text-lg font-medium">เริ่มสร้างการ์ดของคุณ</p>
                         <p className="text-sm">เพิ่มข้อความหรือรูปภาพเพื่อเริ่มต้น</p>
-                        <p className="text-xs text-muted-foreground mt-2">💡 ลากเพื่อย้าย • ลากจุดเพื่อปรับขนาด</p>
                       </div>
                     </div>
                   )}
                 </div>
               </div>
               
+              {/* Card info */}
               <div className="mt-4 text-center">
                 <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">
                   📐 {currentDesign.width} × {currentDesign.height} px
@@ -1475,28 +1162,216 @@ export function CardDesigner() {
               </div>
             </div>
           </div>
+              {/* Text Elements */}
+              {currentDesign.texts.map((text) => (
+                <div
+                  key={text.id}
+                  className={`draggable-text ${selectedElement === text.id ? 'selected' : ''} ${
+                    isPreviewMode ? 'pointer-events-none border-transparent' : ''
+                  }`}
+                  style={{
+                    left: `${text.x}px`,
+                    top: `${text.y}px`,
+                    fontSize: `${text.fontSize}px`,
+                    fontFamily: text.fontFamily,
+                    color: text.color,
+                    fontWeight: text.fontWeight,
+                    fontStyle: text.fontStyle,
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!isPreviewMode) setSelectedElement(text.id);
+                  }}
+                  onMouseDown={(e) => {
+                    if (isPreviewMode) return;
+                    
+                    const startX = e.clientX - text.x;
+                    const startY = e.clientY - text.y;
+                    
+                    const handleMouseMove = (e: MouseEvent) => {
+                      updateText(text.id, {
+                        x: e.clientX - startX,
+                        y: e.clientY - startY
+                      });
+                    };
+                    
+                    const handleMouseUp = () => {
+                      document.removeEventListener('mousemove', handleMouseMove);
+                      document.removeEventListener('mouseup', handleMouseUp);
+                    };
+                    
+                    document.addEventListener('mousemove', handleMouseMove);
+                    document.addEventListener('mouseup', handleMouseUp);
+                  }}
+                >
+                  {text.content}
+                </div>
+              ))}
 
-          {/* A4 Layout Canvas */}
+              {/* Image Elements */}
+              {currentDesign.images.map((image) => (
+                <div
+                  key={image.id}
+                  className={`draggable-image ${selectedElement === image.id ? 'selected' : ''} ${
+                    isPreviewMode ? 'pointer-events-none border-transparent' : ''
+                  }`}
+                  style={{
+                    left: `${image.x}px`,
+                    top: `${image.y}px`,
+                    width: `${image.width}px`,
+                    height: `${image.height}px`,
+                    opacity: image.opacity,
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!isPreviewMode) setSelectedElement(image.id);
+                  }}
+                  onMouseDown={(e) => {
+                    if (isPreviewMode) return;
+                    
+                    // Only handle drag if clicking directly on the image container, not resize handles
+                    if (e.target !== e.currentTarget && !e.currentTarget.querySelector('img')?.contains(e.target as Node)) return;
+                    
+                    e.preventDefault();
+                    const rect = canvasRef.current?.getBoundingClientRect();
+                    if (!rect) return;
+                    
+                    const startX = e.clientX - rect.left - image.x;
+                    const startY = e.clientY - rect.top - image.y;
+                    
+                    const handleMouseMove = (e: MouseEvent) => {
+                      const newX = Math.max(0, Math.min(currentDesign.width - image.width, e.clientX - rect.left - startX));
+                      const newY = Math.max(0, Math.min(currentDesign.height - image.height, e.clientY - rect.top - startY));
+                      
+                      updateImage(image.id, {
+                        x: newX,
+                        y: newY
+                      });
+                    };
+                    
+                    const handleMouseUp = () => {
+                      document.removeEventListener('mousemove', handleMouseMove);
+                      document.removeEventListener('mouseup', handleMouseUp);
+                    };
+                    
+                    document.addEventListener('mousemove', handleMouseMove);
+                    document.addEventListener('mouseup', handleMouseUp);
+                  }}
+                >
+                  <img 
+                    src={image.src} 
+                    alt="Card element" 
+                    className="w-full h-full object-cover"
+                    draggable={false}
+                  />
+                  
+                  {/* Resize Handles - Only show when selected and not in preview mode */}
+                  {selectedElement === image.id && !isPreviewMode && (
+                    <>
+                      {/* Corner resize handles */}
+                      <div
+                        className="absolute -top-1 -left-1 w-3 h-3 bg-primary border border-background rounded-full cursor-nw-resize"
+                        onMouseDown={(e) => {
+                          e.stopPropagation();
+                          const startX = e.clientX;
+                          const startY = e.clientY;
+                          const startWidth = image.width;
+                          const startHeight = image.height;
+                          const startPosX = image.x;
+                          const startPosY = image.y;
+                          
+                          const handleMouseMove = (e: MouseEvent) => {
+                            const deltaX = startX - e.clientX;
+                            const deltaY = startY - e.clientY;
+                            const newWidth = Math.max(20, startWidth + deltaX);
+                            const newHeight = Math.max(20, startHeight + deltaY);
+                            
+                            updateImage(image.id, {
+                              width: newWidth,
+                              height: newHeight,
+                              x: startPosX - (newWidth - startWidth),
+                              y: startPosY - (newHeight - startHeight)
+                            });
+                          };
+                          
+                          const handleMouseUp = () => {
+                            document.removeEventListener('mousemove', handleMouseMove);
+                            document.removeEventListener('mouseup', handleMouseUp);
+                          };
+                          
+                          document.addEventListener('mousemove', handleMouseMove);
+                          document.addEventListener('mouseup', handleMouseUp);
+                        }}
+                      />
+                      
+                      <div
+                        className="absolute -bottom-1 -right-1 w-3 h-3 bg-primary border border-background rounded-full cursor-se-resize"
+                        onMouseDown={(e) => {
+                          e.stopPropagation();
+                          const startX = e.clientX;
+                          const startY = e.clientY;
+                          const startWidth = image.width;
+                          const startHeight = image.height;
+                          
+                          const handleMouseMove = (e: MouseEvent) => {
+                            const deltaX = e.clientX - startX;
+                            const deltaY = e.clientY - startY;
+                            
+                            updateImage(image.id, {
+                              width: Math.max(20, startWidth + deltaX),
+                              height: Math.max(20, startHeight + deltaY)
+                            });
+                          };
+                          
+                          const handleMouseUp = () => {
+                            document.removeEventListener('mousemove', handleMouseMove);
+                            document.removeEventListener('mouseup', handleMouseUp);
+                          };
+                          
+                          document.addEventListener('mousemove', handleMouseMove);
+                          document.addEventListener('mouseup', handleMouseUp);
+                        }}
+                      />
+                    </>
+                  )}
+                </div>
+              ))}
+
+              {/* Empty State */}
+              {currentDesign.texts.length === 0 && currentDesign.images.length === 0 && (
+                <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
+                  <div className="text-center space-y-2">
+                    <Palette className="w-12 h-12 mx-auto opacity-50" />
+                    <p className="text-lg font-medium">เริ่มสร้างการ์ดของคุณ</p>
+                    <p className="text-sm">เพิ่มข้อความหรือรูปภาพเพื่อเริ่มต้น</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* A4 Layout Canvas - Full Page Preview */}
           {showA4Layout && (
             <div className="flex flex-col items-center">
               <h3 className="text-xl font-bold mb-4 text-green-700">🖨️ A4 เต็มพื้นที่ (10 ภาพ)</h3>
               <div className="border-4 border-green-300 shadow-2xl bg-white rounded-xl overflow-hidden" 
-                   style={{ width: '744px', height: '1052px' }}>
+                   style={{ width: '560px', height: '396px' }}>
                 <div 
                   ref={a4CanvasRef}
                   className="relative bg-white w-full h-full"
                   style={{
                     width: `${A4_DIMENSIONS.width}px`,
                     height: `${A4_DIMENSIONS.height}px`,
-                    transform: 'scale(0.3)',
+                    transform: 'scale(0.226)', // Larger scale for better visibility
                     transformOrigin: 'top left'
                   }}
                 >
                   {/* Render exactly 10 cards in 2x5 layout */}
                   {Array.from({ length: 10 }).map((_, index) => {
-                    const col = index % 2;
-                    const row = Math.floor(index / 2);
+                    const col = index % 2; // Force 2 columns
+                    const row = Math.floor(index / 2); // 5 rows
                     
+                    // Calculate optimal positions to fill A4
                     const availableWidth = A4_DIMENSIONS.width - a4Settings.marginLeft - a4Settings.marginRight;
                     const availableHeight = A4_DIMENSIONS.height - a4Settings.marginTop - a4Settings.marginBottom;
                     
@@ -1518,7 +1393,7 @@ export function CardDesigner() {
                           backgroundColor: currentDesign.backgroundColor,
                         }}
                       >
-                        {/* Render text elements */}
+                        {/* Render all text elements scaled to card */}
                         {currentDesign.texts.map((text) => (
                           <div
                             key={`${index}-text-${text.id}`}
@@ -1538,7 +1413,7 @@ export function CardDesigner() {
                           </div>
                         ))}
 
-                        {/* Render image elements */}
+                        {/* Render all image elements scaled to card */}
                         {currentDesign.images.map((image) => (
                           <div
                             key={`${index}-image-${image.id}`}
@@ -1580,24 +1455,119 @@ export function CardDesigner() {
                   <div className="absolute inset-0 border-4 border-gray-400 pointer-events-none" />
                 </div>
               </div>
-              <div className="mt-6 text-center max-w-md">
-                <Badge className="bg-green-100 text-green-800 border-green-300 text-sm px-4 py-2 mb-3">
+              <div className="mt-4 text-center">
+                <Badge className="bg-green-100 text-green-800 border-green-300 text-sm px-4 py-2">
                   🎯 พิมพ์ได้ 10 ภาพเต็ม A4 ในหน้าเดียว
                 </Badge>
-                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                  <p className="text-sm text-green-700 font-medium mb-2">
-                    📐 การ์ดขนาด: <span className="font-bold text-green-800">
-                    {Math.floor((A4_DIMENSIONS.width - a4Settings.marginLeft - a4Settings.marginRight - a4Settings.columnGap) / 2)} × {Math.floor((A4_DIMENSIONS.height - a4Settings.marginTop - a4Settings.marginBottom - 4 * a4Settings.rowGap) / 5)} px
-                    </span>
-                  </p>
-                  <p className="text-sm text-green-700 font-medium mb-2">
-                    🔢 เลย์เอาต์: <span className="font-bold text-green-800">2 คอลัมน์ × 5 แถว = 10 ภาพ</span>
-                  </p>
-                  <p className="text-xs text-green-600">
-                    ✨ ขนาดแสดงผล: 744×1052px (scale 30%)<br/>
-                    📄 ใช้พื้นที่เกือบเต็ม A4 (210×297mm)
-                  </p>
+                <p className="text-sm text-green-600 mt-2 font-medium">
+                  การ์ดขนาด: {Math.floor((A4_DIMENSIONS.width - a4Settings.marginLeft - a4Settings.marginRight - a4Settings.columnGap) / 2)} × {Math.floor((A4_DIMENSIONS.height - a4Settings.marginTop - a4Settings.marginBottom - 4 * a4Settings.rowGap) / 5)} px<br/>
+                  เลย์เอาต์: 2 คอลัมน์ × 5 แถว = 10 ภาพพอดี
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+                  {/* Render exactly 10 cards in 2x5 layout */}
+                  {Array.from({ length: 10 }).map((_, index) => {
+                    const col = index % 2; // Force 2 columns
+                    const row = Math.floor(index / 2); // 5 rows
+                    
+                    // Calculate optimal positions to fill A4
+                    const availableWidth = A4_DIMENSIONS.width - a4Settings.marginLeft - a4Settings.marginRight;
+                    const availableHeight = A4_DIMENSIONS.height - a4Settings.marginTop - a4Settings.marginBottom;
+                    
+                    const cardWidth = Math.floor((availableWidth - a4Settings.columnGap) / 2);
+                    const cardHeight = Math.floor((availableHeight - 4 * a4Settings.rowGap) / 5);
+                    
+                    const x = a4Settings.marginLeft + col * (cardWidth + a4Settings.columnGap);
+                    const y = a4Settings.marginTop + row * (cardHeight + a4Settings.rowGap);
+                    
+                    return (
+                      <div
+                        key={index}
+                        className="absolute border-2 border-green-200 shadow-sm"
+                        style={{
+                          left: `${x}px`,
+                          top: `${y}px`,
+                          width: `${cardWidth}px`,
+                          height: `${cardHeight}px`,
+                          backgroundColor: currentDesign.backgroundColor,
+                        }}
+                      >
+                        {/* Render all text elements scaled to card */}
+                        {currentDesign.texts.map((text) => (
+                          <div
+                            key={`${index}-text-${text.id}`}
+                            className="absolute"
+                            style={{
+                              left: `${(text.x / currentDesign.width) * cardWidth}px`,
+                              top: `${(text.y / currentDesign.height) * cardHeight}px`,
+                              fontSize: `${(text.fontSize / currentDesign.width) * cardWidth}px`,
+                              fontFamily: text.fontFamily,
+                              color: text.color,
+                              fontWeight: text.fontWeight,
+                              fontStyle: text.fontStyle,
+                              pointerEvents: 'none'
+                            }}
+                          >
+                            {text.content}
+                          </div>
+                        ))}
+
+                        {/* Render all image elements scaled to card */}
+                        {currentDesign.images.map((image) => (
+                          <div
+                            key={`${index}-image-${image.id}`}
+                            className="absolute"
+                            style={{
+                              left: `${(image.x / currentDesign.width) * cardWidth}px`,
+                              top: `${(image.y / currentDesign.height) * cardHeight}px`,
+                              width: `${(image.width / currentDesign.width) * cardWidth}px`,
+                              height: `${(image.height / currentDesign.height) * cardHeight}px`,
+                              opacity: image.opacity,
+                              pointerEvents: 'none'
+                            }}
+                          >
+                            <img 
+                              src={image.src} 
+                              alt="Card element" 
+                              className="w-full h-full object-cover"
+                              draggable={false}
+                            />
+                          </div>
+                        ))}
+
+                        {/* Card number badge */}
+                        <div className="absolute top-2 right-2 bg-green-600 text-white text-sm font-bold px-2 py-1 rounded-full shadow-lg">
+                          {index + 1}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  
+                  {/* A4 margins guide */}
+                  <div className="absolute inset-0 border-2 border-dashed border-green-400 pointer-events-none" 
+                       style={{
+                         margin: `${a4Settings.marginTop}px ${a4Settings.marginRight}px ${a4Settings.marginBottom}px ${a4Settings.marginLeft}px`
+                       }} 
+                  />
+                  
+                  {/* A4 Paper outline */}
+                  <div className="absolute inset-0 border-4 border-gray-400 pointer-events-none" />
                 </div>
+              </div>
+              <div className="mt-3 text-center">
+                <Badge className="bg-green-100 text-green-800 border-green-300">
+                  🎯 พิมพ์ได้ 10 ภาพเต็ม A4 ในหน้าเดียว
+                </Badge>
+                <p className="text-xs text-green-600 mt-2 font-medium">
+                  การ์ดขนาด: {Math.floor((A4_DIMENSIONS.width - a4Settings.marginLeft - a4Settings.marginRight - a4Settings.columnGap) / 2)} × {Math.floor((A4_DIMENSIONS.height - a4Settings.marginTop - a4Settings.marginBottom - 4 * a4Settings.rowGap) / 5)} px<br/>
+                  เลย์เอาต์: 2 คอลัมน์ × 5 แถว = 10 ภาพพอดี
+                </p>
               </div>
             </div>
           )}

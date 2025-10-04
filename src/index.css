@@ -130,8 +130,9 @@
 @layer components {
   /* Canvas Elements */
   .draggable-text {
-    @apply absolute cursor-move select-none p-2 border-2 border-transparent;
+    @apply absolute select-none p-2 border-2 border-transparent;
     transition: var(--transition-smooth);
+    cursor: grab;
   }
   
   .draggable-text:hover {
@@ -142,9 +143,17 @@
     @apply border-primary shadow-card;
   }
   
+  .draggable-text.dragging {
+    @apply border-primary/50 shadow-float scale-105;
+    z-index: 1000;
+    cursor: grabbing !important;
+    opacity: 0.9;
+  }
+  
   .draggable-image {
-    @apply absolute cursor-move border-2 border-transparent rounded-lg overflow-hidden;
+    @apply absolute border-2 border-transparent rounded-lg overflow-hidden;
     transition: var(--transition-smooth);
+    cursor: grab;
   }
   
   .draggable-image:hover {
@@ -154,6 +163,34 @@
   .draggable-image.selected {
     @apply border-primary shadow-card;
   }
+  
+  .draggable-image.dragging {
+    @apply border-primary/50 shadow-float scale-105;
+    z-index: 1000;
+    cursor: grabbing !important;
+    opacity: 0.9;
+  }
+  
+  /* Resize handles */
+  .resize-handle {
+    position: absolute;
+    background: hsl(var(--primary));
+    border: 2px solid hsl(var(--background));
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    transition: var(--transition-smooth);
+  }
+  
+  .resize-handle:hover {
+    background: hsl(var(--primary) / 0.8);
+    transform: scale(1.1);
+  }
+  
+  .resize-handle.nw { cursor: nw-resize; }
+  .resize-handle.ne { cursor: ne-resize; }
+  .resize-handle.sw { cursor: sw-resize; }
+  .resize-handle.se { cursor: se-resize; }
 
   /* Canvas Area */
   .canvas-area {
