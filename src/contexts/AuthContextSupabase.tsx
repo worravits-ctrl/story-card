@@ -42,15 +42,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async (event, session) => {
         console.log('Auth state changed:', event, session?.user?.email)
         
-        setUser(session?.user ?? null)
-        
-        if (session?.user) {
-          await loadUserProfile(session.user.id)
-        } else {
-          setUserProfile(null)
+        try {
+          setUser(session?.user ?? null)
+          
+          if (session?.user) {
+            await loadUserProfile(session.user.id)
+          } else {
+            setUserProfile(null)
+          }
+        } catch (error) {
+          console.error('Error handling auth state change:', error)
+        } finally {
+          console.log('Setting loading to false')
+          setLoading(false)
         }
-        
-        setLoading(false)
       }
     )
 
@@ -59,19 +64,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loadUserProfile = async (userId: string) => {
     try {
+      console.log('Loading user profile for:', userId)
       const profile = await getUserProfile(userId)
+      console.log('Profile loaded:', profile)
       setUserProfile(profile)
     } catch (error: any) {
-      console.log('Profile not found, creating new profile...')
+      console.log('Profile not found, creating new profile...', error.message)
       // Profile doesn't exist, create it
       try {
         const user = await getCurrentUser()
         if (user) {
+          console.log('Creating new profile for user:', user.email)
           const newProfile = await createUserProfile(user)
+          console.log('New profile created:', newProfile)
           setUserProfile(newProfile)
         }
       } catch (createError) {
         console.error('Error creating profile:', createError)
+        // Even if profile creation fails, continue with basic user data
+        setUserProfile({
+          id: userId,
+          email: '',
+          role: 'user',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
       }
     }
   }
