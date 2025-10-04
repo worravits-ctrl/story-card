@@ -4,6 +4,8 @@
     "builder": "DOCKERFILE"
   },
   "deploy": {
-    "startCommand": "serve -s dist -l $PORT"
+    "startCommand": "serve -s dist -l $PORT",
+    "healthcheckPath": "/story-card/",
+    "healthcheckTimeout": 100
   }
 }
