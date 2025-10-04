@@ -1,13 +1,16 @@
 # Use Node.js 18 Alpine
-FROM node:18-alpine as builder
+FROM node:18-alpine
 
 # Set working directory
 WORKDIR /app
 
-# Copy package files first (for better caching)
+# Install serve globally first
+RUN npm install -g serve
+
+# Copy package files
 COPY package*.json ./
 
-# Install ALL dependencies (including devDependencies)
+# Install dependencies
 RUN npm ci
 
 # Copy source code
@@ -16,20 +19,11 @@ COPY . .
 # Build the application
 RUN npm run build
 
-# Production stage
-FROM node:18-alpine as production
+# Remove node_modules to reduce image size (optional)
+RUN rm -rf node_modules
 
-# Install serve globally
-RUN npm install -g serve
+# Expose port (Railway will set PORT env variable)
+EXPOSE $PORT
 
-# Copy built files
-COPY --from=builder /app/dist /app/dist
-
-# Set working directory
-WORKDIR /app
-
-# Expose port
-EXPOSE 3000
-
-# Start the application
-CMD ["serve", "-s", "dist", "-l", "3000"]
+# Start with proper Railway port handling
+CMD ["sh", "-c", "serve -s dist -l ${PORT:-3000}"]

@@ -5,7 +5,7 @@
   },
   "deploy": {
     "startCommand": "serve -s dist -l $PORT",
-    "healthcheckPath": "/story-card/",
+    "healthcheckPath": "/",
     "healthcheckTimeout": 100
   }
 }
