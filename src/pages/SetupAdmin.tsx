@@ -243,12 +243,12 @@ export default function SetupAdmin() {
                 <p className="font-medium">1. เข้า Supabase SQL Editor</p>
                 <p>2. รันคำสั่งนี้เพื่อตั้งค่า admin:</p>
                 <div className="bg-gray-800 text-green-400 p-3 rounded font-mono text-xs overflow-x-auto">
-                  <div>UPDATE users SET role = 'admin' WHERE email = '{user?.email || 'your-email@example.com'}';</div>
+                  <div>UPDATE profiles SET role = 'admin' WHERE email = '{user?.email || 'your-email@example.com'}';</div>
                 </div>
                 <p>3. หรือ ตั้งผู้ใช้แรกเป็น admin:</p>
                 <div className="bg-gray-800 text-green-400 p-3 rounded font-mono text-xs overflow-x-auto">
-                  <div>UPDATE users SET role = 'admin' WHERE id = (</div>
-                  <div>&nbsp;&nbsp;SELECT id FROM users ORDER BY created_at ASC LIMIT 1</div>
+                  <div>UPDATE profiles SET role = 'admin' WHERE id = (</div>
+                  <div>&nbsp;&nbsp;SELECT id FROM profiles ORDER BY created_at ASC LIMIT 1</div>
                   <div>);</div>
                 </div>
                 <p className="text-xs text-orange-600">

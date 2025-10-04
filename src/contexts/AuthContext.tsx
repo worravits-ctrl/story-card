@@ -26,7 +26,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const { data, error } = await supabase
-        .from('users')
+        .from('profiles')
         .select('*')
         .eq('id', user.id)
         .single()
@@ -47,7 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         const { data: createdProfile, error: createError } = await supabase
-          .from('users')
+          .from('profiles')
           .insert([newProfile])
           .select()
           .single()

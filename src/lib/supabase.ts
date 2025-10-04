@@ -172,7 +172,7 @@ export const deleteCardDesign = async (id: string) => {
 // Admin Functions
 export const getAllUsers = async (): Promise<User[]> => {
   const { data, error } = await supabase
-    .from('users')
+    .from('profiles')
     .select('*')
     .order('created_at', { ascending: false })
   
@@ -199,7 +199,7 @@ export const getAllCardDesigns = async () => {
 
 export const updateUserRole = async (userId: string, role: 'user' | 'admin') => {
   const { data, error } = await supabase
-    .from('users')
+    .from('profiles')
     .update({ role, updated_at: new Date().toISOString() })
     .eq('id', userId)
     .select()
@@ -220,7 +220,7 @@ export const deleteUser = async (userId: string) => {
 
   // Then delete the user profile
   const { error: profileError } = await supabase
-    .from('users')
+    .from('profiles')
     .delete()
     .eq('id', userId)
 
@@ -267,7 +267,7 @@ export const promoteCurrentUserToAdmin = async () => {
       console.error('RPC Error:', error)
       // Fallback: try direct update (may fail due to RLS)
       const { error: directError } = await supabase
-        .from('users')
+        .from('profiles')
         .update({ role: 'admin', updated_at: new Date().toISOString() })
         .eq('id', user.id)
         
