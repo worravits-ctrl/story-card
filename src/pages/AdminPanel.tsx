@@ -9,7 +9,7 @@ import {
   deleteCardDesign,
   type UserProfile,
   type CardDesign 
-} from '@/lib/localStorage'
+} from '@/lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -27,7 +27,12 @@ import {
   Database,
   Activity,
   Settings,
-  RefreshCw
+  RefreshCw,
+  BarChart3,
+  TrendingUp,
+  Clock,
+  Eye,
+  Ban
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -38,7 +43,7 @@ export default function AdminPanel() {
   const [designs, setDesigns] = useState<CardDesign[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [activeTab, setActiveTab] = useState<'users' | 'designs'>('users')
+  const [activeTab, setActiveTab] = useState<'users' | 'designs' | 'analytics'>('users')
 
   useEffect(() => {
     if (!user) {
@@ -91,7 +96,7 @@ export default function AdminPanel() {
       return
     }
 
-    if (!confirm('คุณแน่ใจหรือไม่ที่จะลบผู้ใช้นี้?')) {
+    if (!confirm('คุณแน่ใจหรือไม่ที่จะลบผู้ใช้นี้? การกระทำนี้ไม่สามารถย้อนกลับได้')) {
       return
     }
 
@@ -102,6 +107,26 @@ export default function AdminPanel() {
     } catch (error) {
       console.error('Error deleting user:', error)
       toast.error('ไม่สามารถลบผู้ใช้ได้')
+    }
+  }
+
+  const handleBanUser = async (userId: string) => {
+    if (userId === user?.id) {
+      toast.error('ไม่สามารถระงับตัวเองได้')
+      return
+    }
+
+    if (!confirm('คุณแน่ใจหรือไม่ที่จะระงับผู้ใช้นี้?')) {
+      return
+    }
+
+    try {
+      // สำหรับตอนนี้เราจะใช้การเปลี่ยน role แทน ban
+      // ในอนาคตสามารถเพิ่ม banned field ในฐานข้อมูลได้
+      toast.info('ฟีเจอร์ระงับผู้ใช้จะมาในอนาคต')
+    } catch (error) {
+      console.error('Error banning user:', error)
+      toast.error('ไม่สามารถระงับผู้ใช้ได้')
     }
   }
 
@@ -139,6 +164,49 @@ export default function AdminPanel() {
       return userDate.toDateString() === today.toDateString()
     }).length
   }
+
+  // Analytics data
+  const getWeeklyStats = () => {
+    const weekDays = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส']
+    const today = new Date()
+    const weekData = []
+
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today)
+      date.setDate(today.getDate() - i)
+      
+      const usersJoined = users.filter(u => {
+        const userDate = new Date(u.created_at)
+        return userDate.toDateString() === date.toDateString()
+      }).length
+
+      const designsCreated = designs.filter(d => {
+        const designDate = new Date(d.created_at)
+        return designDate.toDateString() === date.toDateString()
+      }).length
+
+      weekData.push({
+        day: weekDays[date.getDay()],
+        date: date.toLocaleDateString('th-TH'),
+        users: usersJoined,
+        designs: designsCreated
+      })
+    }
+    return weekData
+  }
+
+  const getTopUsers = () => {
+    const userDesignCounts = users.map(user => ({
+      ...user,
+      designCount: designs.filter(d => d.user_id === user.id).length
+    }))
+    return userDesignCounts
+      .sort((a, b) => b.designCount - a.designCount)
+      .slice(0, 5)
+  }
+
+  const weeklyData = getWeeklyStats()
+  const topUsers = getTopUsers()
 
   if (!user || userProfile?.role !== 'admin') {
     return (
@@ -264,6 +332,17 @@ export default function AdminPanel() {
               <FileImage className="w-4 h-4 inline mr-2" />
               จัดการการ์ด
             </button>
+            <button
+              className={`px-4 py-2 font-medium border-b-2 transition-colors ${
+                activeTab === 'analytics' 
+                  ? 'border-red-500 text-red-600' 
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+              onClick={() => setActiveTab('analytics')}
+            >
+              <BarChart3 className="w-4 h-4 inline mr-2" />
+              สถิติและรายงาน
+            </button>
           </div>
         </div>
 
@@ -328,6 +407,14 @@ export default function AdminPanel() {
                           </Button>
                           <Button
                             size="sm"
+                            variant="secondary"
+                            onClick={() => handleBanUser(user.id)}
+                          >
+                            <Ban className="w-4 h-4 mr-1" />
+                            ระงับ
+                          </Button>
+                          <Button
+                            size="sm"
                             variant="destructive"
                             onClick={() => handleDeleteUser(user.id)}
                           >
@@ -353,6 +440,120 @@ export default function AdminPanel() {
               </div>
             )}
           </div>
+        ) : activeTab === 'analytics' ? (
+          <div className="space-y-8">
+            {/* Weekly Activity Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5" />
+                  กิจกรรมรายสัปดาห์
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-7 gap-4">
+                  {weeklyData.map((day, index) => (
+                    <div key={index} className="text-center">
+                      <div className="text-xs text-gray-500 mb-2">{day.day}</div>
+                      <div className="space-y-2">
+                        <div className="bg-blue-100 rounded-lg p-3">
+                          <div className="text-lg font-bold text-blue-600">{day.users}</div>
+                          <div className="text-xs text-blue-500">ผู้ใช้ใหม่</div>
+                        </div>
+                        <div className="bg-green-100 rounded-lg p-3">
+                          <div className="text-lg font-bold text-green-600">{day.designs}</div>
+                          <div className="text-xs text-green-500">การ์ดใหม่</div>
+                        </div>
+                      </div>
+                      <div className="text-xs text-gray-400 mt-1">{day.date}</div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Top Users */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Crown className="w-5 h-5" />
+                  ผู้ใช้ที่สร้างการ์ดมากที่สุด
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {topUsers.map((topUser, index) => (
+                    <div key={topUser.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                      <div className="flex items-center gap-4">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${
+                          index === 0 ? 'bg-yellow-500' : 
+                          index === 1 ? 'bg-gray-400' : 
+                          index === 2 ? 'bg-orange-500' : 'bg-blue-500'
+                        }`}>
+                          {index + 1}
+                        </div>
+                        <div>
+                          <div className="font-medium">
+                            {topUser.full_name || 'ไม่ระบุชื่อ'}
+                          </div>
+                          <div className="text-sm text-gray-600">{topUser.email}</div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-bold text-lg">{topUser.designCount}</div>
+                        <div className="text-xs text-gray-500">การ์ด</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Recent Activity */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="w-5 h-5" />
+                  กิจกรรมล่าสุด
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {users.slice(-5).reverse().map((recentUser) => (
+                    <div key={recentUser.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <User className="w-4 h-4 text-gray-500" />
+                      <div className="flex-1">
+                        <span className="font-medium">{recentUser.full_name || 'ผู้ใช้ใหม่'}</span>
+                        <span className="text-gray-600"> สมัครสมาชิก</span>
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {new Date(recentUser.created_at).toLocaleString('th-TH')}
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {designs.slice(-3).reverse().map((recentDesign) => {
+                    const designOwner = users.find(u => u.id === recentDesign.user_id)
+                    return (
+                      <div key={recentDesign.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                        <FileImage className="w-4 h-4 text-gray-500" />
+                        <div className="flex-1">
+                          <span className="font-medium">{designOwner?.full_name || 'ผู้ใช้'}</span>
+                          <span className="text-gray-600"> สร้างการ์ด </span>
+                          <span className="font-medium">{recentDesign.name}</span>
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {new Date(recentDesign.created_at).toLocaleString('th-TH')}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredDesigns.map((design) => (
@@ -370,7 +571,7 @@ export default function AdminPanel() {
                           style={{ 
                             color: text.color,
                             fontSize: '8px',
-                            fontWeight: text.fontWeight 
+                            fontWeight: text.font_weight 
                           }}
                         >
                           {text.content}
