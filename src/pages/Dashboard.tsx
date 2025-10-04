@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '@/contexts/AuthContextLocal'
+import { useAuth } from '@/contexts/AuthContextSupabase'
 import { getUserCardDesigns, deleteCardDesign } from '@/lib/localStorage'
 import type { CardDesign } from '@/lib/localStorage'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'

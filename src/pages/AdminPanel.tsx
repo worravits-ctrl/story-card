@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '@/contexts/AuthContextLocal'
+import { useAuth } from '@/contexts/AuthContextSupabase'
 import { 
   getAllUsers, 
   getAllCardDesigns, 
