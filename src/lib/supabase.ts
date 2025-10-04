@@ -253,46 +253,19 @@ export const deleteCardDesign = async (id: string) => {
 // Admin Functions
 export const getAllUsers = async (): Promise<User[]> => {
   try {
-    console.log('=== DEBUG: getAllUsers ===')
-    
-    // ตรวจสอบ current user
-    const { data: { user: currentUser } } = await supabase.auth.getUser()
-    console.log('Current user:', currentUser?.id, currentUser?.email)
-    
-    // ตรวจสอบ role ของ current user
-    const { data: currentProfile } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
-      .select('role')
-      .eq('id', currentUser?.id)
-      .single()
-    console.log('Current user role:', currentProfile?.role)
-    
-    // ลอง query แบบไม่มี order ก่อน
-    console.log('Attempting to fetch all profiles...')
-    const { data, error, count } = await supabase
-      .from('profiles')
-      .select('*', { count: 'exact' })
-    
-    console.log('Query result:')
-    console.log('- Data:', data)
-    console.log('- Error:', error)
-    console.log('- Count:', count)
+      .select('*')
+      .order('created_at', { ascending: false })
     
     if (error) {
-      console.error('=== Supabase Error Details ===')
-      console.error('Code:', error.code)
-      console.error('Message:', error.message)
-      console.error('Details:', error.details)
-      console.error('Hint:', error.hint)
+      console.error('Supabase error in getAllUsers:', error)
       throw error
     }
     
-    console.log('Users fetched successfully:', data?.length || 0, 'users')
-    console.log('Users data:', data)
-    
     return data || []
   } catch (error) {
-    console.error('=== Error in getAllUsers ===', error)
+    console.error('Error in getAllUsers:', error)
     throw error
   }
 }
