@@ -3,7 +3,13 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://your-project.supabase.co'
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'your-anon-key'
 
-export const supabase = createClient(supabaseUrl, supabaseKey)
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true
+  }
+})
 
 // Database Types
 export interface User {
@@ -35,11 +41,11 @@ export interface TextElement {
   content: string
   x: number
   y: number
-  fontSize: number
-  fontFamily: string
+  font_size: number
+  font_family: string
+  font_weight: string
+  font_style: string
   color: string
-  fontWeight: 'normal' | 'bold'
-  fontStyle: 'normal' | 'italic'
 }
 
 export interface ImageElement {
@@ -52,7 +58,33 @@ export interface ImageElement {
   opacity: number
 }
 
-// Auth Helper Functions
+// Authentication Functions
+export const signUp = async (email: string, password: string, fullName: string) => {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: {
+        full_name: fullName,
+        role: 'user'
+      }
+    }
+  })
+  
+  if (error) throw error
+  return data
+}
+
+export const signIn = async (email: string, password: string) => {
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password
+  })
+  
+  if (error) throw error
+  return data
+}
+
 export const getCurrentUser = async () => {
   const { data: { user } } = await supabase.auth.getUser()
   return user
@@ -61,6 +93,36 @@ export const getCurrentUser = async () => {
 export const signOut = async () => {
   const { error } = await supabase.auth.signOut()
   if (error) throw error
+}
+
+// Profile Functions
+export const createUserProfile = async (user: any) => {
+  const { data, error } = await supabase
+    .from('profiles')
+    .insert([{
+      id: user.id,
+      email: user.email,
+      full_name: user.user_metadata?.full_name || '',
+      role: user.user_metadata?.role || 'user',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }])
+    .select()
+    .single()
+  
+  if (error) throw error
+  return data
+}
+
+export const getUserProfile = async (userId: string) => {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .single()
+  
+  if (error) throw error
+  return data
 }
 
 // Database Helper Functions

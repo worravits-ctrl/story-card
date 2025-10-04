@@ -3,10 +3,10 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from '@/contexts/AuthContextLocal'
+import { AuthProvider, useAuth } from '@/contexts/AuthContextSupabase'
 
 // Pages
-import AuthPageLocal from '@/pages/AuthPageLocal'
+import AuthPageSupabase from '@/pages/AuthPageSupabase'
 import Dashboard from '@/pages/Dashboard'
 import AdminPanel from '@/pages/AdminPanel'
 import { CardDesigner } from '@/components/CardDesigner'
@@ -50,7 +50,7 @@ const App = () => {
         <Route path="/" element={<Index />} />
         <Route 
           path="/auth" 
-          element={user ? <Navigate to="/dashboard" /> : <AuthPageLocal />} 
+          element={user ? <Navigate to="/dashboard" /> : <AuthPageSupabase />} 
         />
         <Route 
           path="/dashboard" 

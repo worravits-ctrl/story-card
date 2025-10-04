@@ -36,14 +36,14 @@ import {
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
-import { useAuth } from '@/contexts/AuthContextLocal';
+import { useAuth } from '@/contexts/AuthContextSupabase';
 import { 
   saveCardDesign, 
   updateCardDesign, 
   getUserCardDesigns, 
   deleteCardDesign,
   type CardDesign as DBCardDesign 
-} from '@/lib/localStorage';
+} from '@/lib/supabase';
 
 interface TextElement {
   id: string;
@@ -206,13 +206,16 @@ export function CardDesigner() {
         width: currentDesign.width,
         height: currentDesign.height,
         background_color: currentDesign.backgroundColor,
+        is_public: false,
         texts: currentDesign.texts.map(t => ({
           id: t.id,
           content: t.content,
           x: t.x,
           y: t.y,
-          fontSize: t.fontSize,
-          fontWeight: t.fontWeight,
+          font_size: t.fontSize,
+          font_family: t.fontFamily,
+          font_weight: t.fontWeight,
+          font_style: t.fontStyle,
           color: t.color
         })),
         images: currentDesign.images.map(img => ({
@@ -221,7 +224,8 @@ export function CardDesigner() {
           x: img.x,
           y: img.y,
           width: img.width,
-          height: img.height
+          height: img.height,
+          opacity: img.opacity
         }))
       };
 
@@ -274,10 +278,15 @@ export function CardDesigner() {
       height: design.height,
       backgroundColor: design.background_color,
       texts: design.texts.map(t => ({
-        ...t,
-        fontFamily: 'Inter',
-        fontStyle: 'normal' as const,
-        fontWeight: (t.fontWeight === 'bold' ? 'bold' : 'normal') as 'normal' | 'bold'
+        id: t.id,
+        content: t.content,
+        x: t.x,
+        y: t.y,
+        fontSize: t.font_size,
+        fontFamily: t.font_family,
+        fontWeight: (t.font_weight === 'bold' ? 'bold' : 'normal') as 'normal' | 'bold',
+        fontStyle: (t.font_style === 'italic' ? 'italic' : 'normal') as 'normal' | 'italic',
+        color: t.color
       })),
       images: design.images.map(img => ({
         ...img,
