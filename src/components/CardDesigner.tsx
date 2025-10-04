@@ -28,10 +28,22 @@ import {
   Eye,
   Copy,
   Grid3X3,
-  Layout
+  Layout,
+  Cloud,
+  HardDrive,
+  Wifi,
+  WifiOff
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import { useAuth } from '@/contexts/AuthContextLocal';
+import { 
+  saveCardDesign, 
+  updateCardDesign, 
+  getUserCardDesigns, 
+  deleteCardDesign,
+  type CardDesign as DBCardDesign 
+} from '@/lib/localStorage';
 
 interface TextElement {
   id: string;
@@ -89,6 +101,10 @@ const FONT_FAMILIES = [
 ];
 
 export function CardDesigner() {
+  const { user } = useAuth();
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [saveMode, setSaveMode] = useState<'online' | 'offline'>('online');
+  
   const [currentDesign, setCurrentDesign] = useState<CardDesign>({
     id: '1',
     name: 'A4 Full Card',
@@ -101,6 +117,7 @@ export function CardDesigner() {
   });
 
   const [savedDesigns, setSavedDesigns] = useState<CardDesign[]>([]);
+  const [onlineDesigns, setOnlineDesigns] = useState<DBCardDesign[]>([]);
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
@@ -134,15 +151,100 @@ export function CardDesigner() {
   const a4CanvasRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load saved designs on component mount
-  useState(() => {
+  // Online/offline detection
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Load designs on component mount
+  useEffect(() => {
+    loadAllDesigns();
+  }, [user]);
+
+  const loadAllDesigns = async () => {
+    // Load offline designs
     const saved = localStorage.getItem('cardDesigns');
     if (saved) {
       setSavedDesigns(JSON.parse(saved));
     }
-  });
+    
+    // Load online designs if user is logged in
+    if (user && isOnline) {
+      try {
+        const designs = await getUserCardDesigns(user.id);
+        setOnlineDesigns(designs);
+      } catch (error) {
+        console.error('Failed to load online designs:', error);
+        toast.error('ไม่สามารถโหลดการ์ดออนไลน์ได้');
+      }
+    }
+  };
 
-  const saveDesign = () => {
+  const saveDesign = async () => {
+    if (saveMode === 'online' && user && isOnline) {
+      await saveDesignOnline();
+    } else {
+      saveDesignOffline();
+    }
+  };
+
+  const saveDesignOnline = async () => {
+    try {
+      // Convert to DB format
+      const dbDesign = {
+        user_id: user!.id,
+        name: currentDesign.name,
+        width: currentDesign.width,
+        height: currentDesign.height,
+        background_color: currentDesign.backgroundColor,
+        texts: currentDesign.texts.map(t => ({
+          id: t.id,
+          content: t.content,
+          x: t.x,
+          y: t.y,
+          fontSize: t.fontSize,
+          fontWeight: t.fontWeight,
+          color: t.color
+        })),
+        images: currentDesign.images.map(img => ({
+          id: img.id,
+          src: img.src,
+          x: img.x,
+          y: img.y,
+          width: img.width,
+          height: img.height
+        }))
+      };
+
+      // Check if updating existing design
+      const existingDesign = onlineDesigns.find(d => d.name === currentDesign.name);
+      
+      if (existingDesign) {
+        const updated = await updateCardDesign(existingDesign.id, dbDesign);
+        setOnlineDesigns(prev => prev.map(d => d.id === updated.id ? updated : d));
+        toast.success('บันทึกการ์ดออนไลน์สำเร็จ! (อัพเดท)');
+      } else {
+        const saved = await saveCardDesign(dbDesign);
+        setOnlineDesigns(prev => [...prev, saved]);
+        toast.success('บันทึกการ์ดออนไลน์สำเร็จ! (ใหม่)');
+      }
+    } catch (error) {
+      console.error('Failed to save online:', error);
+      toast.error('บันทึกออนไลน์ไม่สำเร็จ กำลังบันทึกแบบออฟไลน์');
+      saveDesignOffline();
+    }
+  };
+
+  const saveDesignOffline = () => {
     const designs = [...savedDesigns];
     const existingIndex = designs.findIndex(d => d.id === currentDesign.id);
     
@@ -154,7 +256,7 @@ export function CardDesigner() {
     
     setSavedDesigns(designs);
     localStorage.setItem('cardDesigns', JSON.stringify(designs));
-    toast.success('การ์ดถูกบันทึกแล้ว!');
+    toast.success('การ์ดถูกบันทึกแล้ว! (ออฟไลน์)');
   };
 
   const loadDesign = (design: CardDesign) => {
@@ -163,11 +265,48 @@ export function CardDesigner() {
     toast.success('โหลดการ์ดสำเร็จ!');
   };
 
+  const loadOnlineDesign = (design: DBCardDesign) => {
+    // Convert from DB format to local format
+    const converted: CardDesign = {
+      id: design.id,
+      name: design.name,
+      width: design.width,
+      height: design.height,
+      backgroundColor: design.background_color,
+      texts: design.texts.map(t => ({
+        ...t,
+        fontFamily: 'Inter',
+        fontStyle: 'normal' as const,
+        fontWeight: (t.fontWeight === 'bold' ? 'bold' : 'normal') as 'normal' | 'bold'
+      })),
+      images: design.images.map(img => ({
+        ...img,
+        opacity: 1
+      })),
+      createdAt: new Date(design.created_at)
+    };
+    
+    setCurrentDesign(converted);
+    setSelectedElement(null);
+    toast.success('โหลดการ์ดออนไลน์สำเร็จ!');
+  };
+
   const deleteDesign = (designId: string) => {
     const designs = savedDesigns.filter(d => d.id !== designId);
     setSavedDesigns(designs);
     localStorage.setItem('cardDesigns', JSON.stringify(designs));
-    toast.success('ลบการ์ดแล้ว');
+    toast.success('ลบการ์ดแล้ว (ออฟไลน์)');
+  };
+
+  const deleteOnlineDesign = async (designId: string) => {
+    try {
+      await deleteCardDesign(designId);
+      setOnlineDesigns(prev => prev.filter(d => d.id !== designId));
+      toast.success('ลบการ์ดออนไลน์แล้ว');
+    } catch (error) {
+      console.error('Failed to delete online design:', error);
+      toast.error('ไม่สามารถลบการ์ดออนไลน์ได้');
+    }
   };
 
   const clearCanvas = () => {
@@ -1225,8 +1364,17 @@ export function CardDesigner() {
             </Label>
             <div className="grid grid-cols-2 gap-1">
               <Button onClick={saveDesign} variant="default" className="h-8 text-xs">
-                <Save className="w-3 h-3 mr-1" />
-                บันทึก
+                {saveMode === 'online' ? (
+                  <>
+                    <Cloud className="w-3 h-3 mr-1" />
+                    บันทึกออนไลน์
+                  </>
+                ) : (
+                  <>
+                    <HardDrive className="w-3 h-3 mr-1" />
+                    บันทึกออฟไลน์
+                  </>
+                )}
               </Button>
               <Button onClick={clearCanvas} variant="outline" className="h-8 text-xs">
                 <RotateCcw className="w-3 h-3 mr-1" />
@@ -1251,38 +1399,106 @@ export function CardDesigner() {
 
           <Separator />
 
+          {/* Save Mode Toggle */}
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold flex items-center gap-2">
+              {isOnline ? <Wifi className="w-4 h-4 text-green-500" /> : <WifiOff className="w-4 h-4 text-red-500" />}
+              โหมดบันทึก
+            </Label>
+            <div className="flex gap-1">
+              <Button
+                size="sm"
+                variant={saveMode === 'online' ? 'default' : 'outline'}
+                onClick={() => setSaveMode('online')}
+                disabled={!user || !isOnline}
+                className="flex-1 text-xs"
+              >
+                <Cloud className="w-3 h-3 mr-1" />
+                Online
+              </Button>
+              <Button
+                size="sm"
+                variant={saveMode === 'offline' ? 'default' : 'outline'}
+                onClick={() => setSaveMode('offline')}
+                className="flex-1 text-xs"
+              >
+                <HardDrive className="w-3 h-3 mr-1" />
+                Offline
+              </Button>
+            </div>
+          </div>
+
+          <Separator />
+
           {/* Saved Designs */}
           <div className="space-y-3">
             <Label className="text-sm font-semibold flex items-center gap-2">
               <Save className="w-4 h-4" />
-              การ์ดที่บันทึก ({savedDesigns.length})
+              {saveMode === 'online' ? 'การ์ดออนไลน์' : 'การ์ดออฟไลน์'} 
+              ({saveMode === 'online' ? onlineDesigns.length : savedDesigns.length})
             </Label>
             <ScrollArea className="h-32">
               <div className="space-y-1">
-                {savedDesigns.map((design) => (
-                  <Card key={design.id} className="p-2 cursor-pointer hover:shadow-md transition-shadow">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1" onClick={() => loadDesign(design)}>
-                        <p className="text-xs font-medium truncate">{design.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {design.width}×{design.height} • {design.texts.length}T • {design.images.length}I
-                        </p>
+                {saveMode === 'online' ? (
+                  // Online designs
+                  onlineDesigns.map((design) => (
+                    <Card key={design.id} className="p-2 cursor-pointer hover:shadow-md transition-shadow">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1" onClick={() => loadOnlineDesign(design)}>
+                          <p className="text-xs font-medium truncate flex items-center gap-1">
+                            <Cloud className="w-3 h-3 text-blue-500" />
+                            {design.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {design.width}×{design.height} • {design.texts.length}T • {design.images.length}I
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteOnlineDesign(design.id);
+                          }}
+                          className="h-6 w-6 p-0"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteDesign(design.id);
-                        }}
-                        className="h-6 w-6 p-0"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  </Card>
-                ))}
-                {savedDesigns.length === 0 && (
+                    </Card>
+                  ))
+                ) : (
+                  // Offline designs
+                  savedDesigns.map((design) => (
+                    <Card key={design.id} className="p-2 cursor-pointer hover:shadow-md transition-shadow">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1" onClick={() => loadDesign(design)}>
+                          <p className="text-xs font-medium truncate flex items-center gap-1">
+                            <HardDrive className="w-3 h-3 text-gray-500" />
+                            {design.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {design.width}×{design.height} • {design.texts.length}T • {design.images.length}I
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteDesign(design.id);
+                          }}
+                          className="h-6 w-6 p-0"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </Card>
+                  ))
+                )}
+                
+                {((saveMode === 'online' && onlineDesigns.length === 0) || 
+                  (saveMode === 'offline' && savedDesigns.length === 0)) && (
                   <p className="text-xs text-muted-foreground text-center py-3">
                     ยังไม่มีการ์ดที่บันทึก
                   </p>
