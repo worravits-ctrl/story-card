@@ -10,11 +10,11 @@ RUN npm run build
 FROM node:18-alpine AS production
 WORKDIR /app
 
-# Install serve
-RUN npm install -g serve
+# Install only sirv-cli for production
+RUN npm install -g sirv-cli
 
 # Copy built application
 COPY --from=build /build/dist ./dist
 
 EXPOSE 3000
-CMD ["serve", "-s", "dist", "-l", "3000"]
+CMD ["sirv", "dist", "--port", "3000", "--host", "0.0.0.0", "--single"]

@@ -9,9 +9,10 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "start": "serve -s dist",
+    "start": "sirv dist --port 3000 --host 0.0.0.0 --single",
+    "serve": "serve -s dist -p 3000",
     "railway:build": "npm run build",
-    "railway:start": "serve -s dist -p ${PORT:-3000}"
+    "railway:start": "sirv dist --port $PORT --host 0.0.0.0 --single"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -52,6 +53,7 @@
     "cmdk": "^1.1.1",
     "date-fns": "^3.6.0",
     "embla-carousel-react": "^8.6.0",
+    "express": "^5.1.0",
     "html2canvas": "^1.4.1",
     "input-otp": "^1.4.2",
     "jspdf": "^3.0.1",
@@ -64,6 +66,7 @@
     "react-resizable-panels": "^2.1.9",
     "react-router-dom": "^6.30.1",
     "recharts": "^2.15.4",
+    "sirv-cli": "^3.0.1",
     "sonner": "^1.7.4",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
