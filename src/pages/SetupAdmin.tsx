@@ -31,9 +31,9 @@ export default function SetupAdmin() {
       setTimeout(() => {
         navigate('/admin')
       }, 2000)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error promoting to admin:', error)
-      toast.error('ไม่สามารถตั้งค่า Admin ได้')
+      toast.error(`ไม่สามารถตั้งค่า Admin ได้: ${error.message || 'เกิดข้อผิดพลาด'}`)
     } finally {
       setLoading(false)
     }
@@ -53,9 +53,9 @@ export default function SetupAdmin() {
       } else {
         toast.info('ไม่พบผู้ใช้หรือมี Admin อยู่แล้ว')
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error making first user admin:', error)
-      toast.error('ไม่สามารถตั้งค่า Admin ได้')
+      toast.error(`ไม่สามารถตั้งค่า Admin ได้: ${error.message || 'เกิดข้อผิดพลาด'}`)
     } finally {
       setLoading(false)
     }
@@ -227,6 +227,34 @@ export default function SetupAdmin() {
                   </div>
                 )}
               </Button>
+            </CardContent>
+          </Card>
+
+          {/* Manual Instructions */}
+          <Card className="border-orange-200 bg-orange-50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-orange-700">
+                <Shield className="w-5 h-5" />
+                ขั้นตอนการตั้งค่าด้วยตนเอง (หากปุ่มไม่ทำงาน)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="text-sm text-orange-700 space-y-2">
+                <p className="font-medium">1. เข้า Supabase SQL Editor</p>
+                <p>2. รันคำสั่งนี้เพื่อตั้งค่า admin:</p>
+                <div className="bg-gray-800 text-green-400 p-3 rounded font-mono text-xs overflow-x-auto">
+                  <div>UPDATE users SET role = 'admin' WHERE email = '{user?.email || 'your-email@example.com'}';</div>
+                </div>
+                <p>3. หรือ ตั้งผู้ใช้แรกเป็น admin:</p>
+                <div className="bg-gray-800 text-green-400 p-3 rounded font-mono text-xs overflow-x-auto">
+                  <div>UPDATE users SET role = 'admin' WHERE id = (</div>
+                  <div>&nbsp;&nbsp;SELECT id FROM users ORDER BY created_at ASC LIMIT 1</div>
+                  <div>);</div>
+                </div>
+                <p className="text-xs text-orange-600">
+                  หลังรันคำสั่ง ให้ออกจากระบบแล้วเข้าใหม่เพื่อ refresh สิทธิ์
+                </p>
+              </div>
             </CardContent>
           </Card>
         </div>

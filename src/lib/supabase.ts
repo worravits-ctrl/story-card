@@ -230,29 +230,22 @@ export const deleteUser = async (userId: string) => {
 // Make first user admin automatically
 export const makeFirstUserAdmin = async () => {
   try {
-    const { data: users, error } = await supabase
-      .from('users')
-      .select('*')
-      .order('created_at', { ascending: true })
-      .limit(1)
+    const { data, error } = await supabase.rpc('make_first_user_admin')
 
-    if (error) throw error
-
-    if (users && users.length > 0 && users[0].role !== 'admin') {
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({ role: 'admin' })
-        .eq('id', users[0].id)
-
-      if (updateError) throw updateError
-      console.log('First user promoted to admin:', users[0].email)
-      return true
+    if (error) {
+      console.error('RPC Error:', error)
+      throw error
     }
 
-    return false
+    if (data?.error) {
+      throw new Error(data.error)
+    }
+
+    console.log('First user admin result:', data)
+    return data?.success || false
   } catch (error) {
     console.error('Error making first user admin:', error)
-    return false
+    throw error
   }
 }
 
@@ -265,12 +258,23 @@ export const promoteCurrentUserToAdmin = async () => {
       throw new Error('ไม่พบผู้ใช้ที่ล็อกอิน')
     }
 
-    const { error } = await supabase
-      .from('users')
-      .update({ role: 'admin' })
-      .eq('id', user.id)
+    // Use RPC function to bypass RLS for admin setup
+    const { data, error } = await supabase.rpc('promote_user_to_admin', {
+      user_id: user.id
+    })
 
-    if (error) throw error
+    if (error) {
+      console.error('RPC Error:', error)
+      // Fallback: try direct update (may fail due to RLS)
+      const { error: directError } = await supabase
+        .from('users')
+        .update({ role: 'admin', updated_at: new Date().toISOString() })
+        .eq('id', user.id)
+        
+      if (directError) {
+        throw new Error(`ไม่สามารถตั้งค่า Admin ได้: ${directError.message}`)
+      }
+    }
     
     return true
   } catch (error) {
