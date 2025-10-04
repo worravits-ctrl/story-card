@@ -23,11 +23,12 @@ const App = () => {
   console.log('Environment:', import.meta.env.MODE)
 
   function AppRoutes() {
-    const { user, loading } = useAuth()
+    const { user, userProfile, loading } = useAuth()
     
-    console.log('AppRoutes rendering...', { user, loading })
+    console.log('AppRoutes rendering...', { user: user?.email, userProfile, loading, currentPath: window.location.pathname })
     
     if (loading) {
+      console.log('Loading state - showing spinner')
       return (
         <div className="min-h-screen flex items-center justify-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
@@ -37,20 +38,43 @@ const App = () => {
     
     function ProtectedRoute({ children }: { children: React.ReactNode }) {
       const { user } = useAuth()
+      console.log('ProtectedRoute check:', { hasUser: !!user, userEmail: user?.email })
       return user ? children : <Navigate to="/auth" />
     }
 
     function AdminRoute({ children }: { children: React.ReactNode }) {
       const { user, userProfile } = useAuth()
+      console.log('AdminRoute check:', { hasUser: !!user, userProfile })
       return user && userProfile?.role === 'admin' ? children : <Navigate to="/dashboard" />
     }
     
+    // Debug current path and user state
+    console.log('Current path:', window.location.pathname)
+    console.log('User state:', { hasUser: !!user, email: user?.email })
+    
     return (
       <Routes>
-        <Route path="/" element={<Index />} />
+        <Route path="/" element={
+          <>
+            {console.log('Rendering Index component')}
+            <Index />
+          </>
+        } />
         <Route 
           path="/auth" 
-          element={user ? <Navigate to="/dashboard" /> : <AuthPageSupabase />} 
+          element={
+            user ? (
+              <>
+                {console.log('User exists, redirecting to dashboard')}
+                <Navigate to="/dashboard" />
+              </>
+            ) : (
+              <>
+                {console.log('No user, showing auth page')}
+                <AuthPageSupabase />
+              </>
+            )
+          } 
         />
         <Route 
           path="/dashboard" 
