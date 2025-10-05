@@ -10,7 +10,8 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
     detectSessionInUrl: true,
     storage: window.localStorage,
     storageKey: 'sb-auth-token',
-    flowType: 'pkce'
+    flowType: 'pkce',
+    debug: import.meta.env.MODE === 'development'
   },
   global: {
     headers: {
@@ -18,7 +19,15 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
       'Pragma': 'no-cache',
       'Expires': '0'
     }
-  }
+  },
+  // Production-specific settings
+  ...(import.meta.env.MODE === 'production' && {
+    realtime: {
+      params: {
+        eventsPerSecond: 2
+      }
+    }
+  })
 })
 
 // Handle email confirmation in URL
@@ -171,8 +180,38 @@ export const signIn = async (email: string, password: string) => {
 }
 
 export const getCurrentUser = async () => {
-  const { data: { user } } = await supabase.auth.getUser()
-  return user
+  try {
+    console.log('Getting current user...')
+    const { data: { user }, error } = await supabase.auth.getUser()
+    
+    if (error) {
+      console.error('Error getting user:', error)
+      return null
+    }
+    
+    console.log('Current user:', user?.email || 'No user')
+    return user
+  } catch (error) {
+    console.error('Exception getting user:', error)
+    return null
+  }
+}
+
+// Force refresh session for debugging
+export const refreshSession = async () => {
+  try {
+    console.log('Refreshing session...')
+    const { data, error } = await supabase.auth.refreshSession()
+    if (error) {
+      console.error('Error refreshing session:', error)
+      return null
+    }
+    console.log('Session refreshed:', data.user?.email)
+    return data
+  } catch (error) {
+    console.error('Exception refreshing session:', error)
+    return null
+  }
 }
 
 export const signOut = async () => {

@@ -29,12 +29,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Get initial session
+    // Get initial session with more debug info
+    console.log('AuthProvider initializing...')
+    console.log('Current URL:', window.location.href)
+    
     getCurrentUser().then((user) => {
+      console.log('Initial user check:', user?.email || 'No user')
       setUser(user)
       if (user) {
         loadUserProfile(user.id)
       }
+      setLoading(false)
+    }).catch((error) => {
+      console.error('Error getting initial user:', error)
       setLoading(false)
     })
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContextSupabase'
-import { getUserCardDesigns, deleteCardDesign, clearAuthData } from '@/lib/supabase'
+import { getUserCardDesigns, deleteCardDesign, clearAuthData, refreshSession } from '@/lib/supabase'
 import type { CardDesign } from '@/lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -134,6 +134,20 @@ export default function Dashboard() {
                     Admin
                   </Button>
                 )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    console.log('Debug: Current user:', user)
+                    console.log('Debug: User profile:', userProfile)
+                    console.log('Debug: Environment:', import.meta.env.MODE)
+                    console.log('Debug: URL:', window.location.href)
+                    toast.info('ข้อมูล Debug แสดงใน Console')
+                  }}
+                  title="Debug Info"
+                >
+                  🐛
+                </Button>
                 <Button
                   variant="ghost"
                   size="sm"
