@@ -23,12 +23,32 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
 
 // Handle email confirmation in URL
 if (typeof window !== 'undefined') {
+  // ตรวจสอบ URL parameters เมื่อโหลดหน้า
+  const urlParams = new URLSearchParams(window.location.search)
+  const hasError = urlParams.get('error')
+  const errorCode = urlParams.get('error_code')
+  
+  if (hasError && errorCode === 'otp_expired') {
+    console.log('OTP expired, cleaning URL...')
+    // ลบ error parameters จาก URL
+    const newUrl = window.location.pathname
+    window.history.replaceState({}, document.title, newUrl)
+  }
+  
   supabase.auth.onAuthStateChange((event, session) => {
+    console.log('Auth state change:', event, session?.user?.email)
+    
     if (event === 'SIGNED_IN' && session) {
       console.log('User signed in via email confirmation')
       // Redirect to dashboard if confirmed via email
-      if (window.location.pathname === '/auth' && window.location.search.includes('confirmed=true')) {
-        window.location.href = '/dashboard'
+      if (window.location.pathname === '/auth') {
+        const urlParams = new URLSearchParams(window.location.search)
+        if (urlParams.get('confirmed') === 'true') {
+          console.log('Redirecting to dashboard after email confirmation')
+          setTimeout(() => {
+            window.location.href = '/dashboard'
+          }, 1000)
+        }
       }
     }
   })
@@ -83,8 +103,13 @@ export interface ImageElement {
 
 // Authentication Functions
 export const signUp = async (email: string, password: string, fullName: string) => {
-  // สำหรับ production - บังคับยืนยันอีเมล
-  const redirectUrl = `${window.location.origin}/auth?confirmed=true`
+  // ใช้ URL ปัจจุบันที่แน่นอน
+  const currentPort = window.location.port || '8080'
+  const currentHost = window.location.hostname || 'localhost'
+  const protocol = window.location.protocol || 'http:'
+  const redirectUrl = `${protocol}//${currentHost}:${currentPort}/auth?confirmed=true`
+  
+  console.log('Using redirect URL:', redirectUrl)
   
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -435,7 +460,13 @@ export type UserProfile = User
 
 // Resend confirmation email
 export const resendConfirmation = async (email: string) => {
-  const redirectUrl = window.location.origin + '/auth?confirmed=true'
+  // ใช้ URL ปัจจุบันที่แน่นอน
+  const currentPort = window.location.port || '8080'
+  const currentHost = window.location.hostname || 'localhost'
+  const protocol = window.location.protocol || 'http:'
+  const redirectUrl = `${protocol}//${currentHost}:${currentPort}/auth?confirmed=true`
+  
+  console.log('Resending confirmation to:', redirectUrl)
   
   const { error } = await supabase.auth.resend({
     type: 'signup',
@@ -457,4 +488,32 @@ export const confirmUserEmail = async (userId: string) => {
   
   if (error) throw error
   return { success: true }
+}
+
+// Reset and resend confirmation with correct URL
+export const resetEmailConfirmation = async (email: string) => {
+  try {
+    // ลองลบ user ที่ยัง unconfirmed และสร้างใหม่ (ถ้าเป็น development)
+    console.log('Attempting to reset email confirmation for:', email)
+    
+    const currentPort = window.location.port || '8080'
+    const currentHost = window.location.hostname || 'localhost'
+    const protocol = window.location.protocol || 'http:'
+    const redirectUrl = `${protocol}//${currentHost}:${currentPort}/auth?confirmed=true`
+    
+    // ส่งอีเมลใหม่
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: email,
+      options: {
+        emailRedirectTo: redirectUrl
+      }
+    })
+    
+    if (error) throw error
+    return { success: true, message: 'ส่งอีเมลยืนยันใหม่แล้ว โปรดตรวจสอบอีเมลและคลิกลิงก์' }
+  } catch (error: any) {
+    console.error('Reset confirmation error:', error)
+    throw new Error('ไม่สามารถส่งอีเมลยืนยันใหม่ได้ กรุณาลองใหม่หรือสมัครสมาชิกใหม่')
+  }
 }

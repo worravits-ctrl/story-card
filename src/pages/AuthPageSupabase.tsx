@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -12,6 +12,7 @@ import { toast } from 'sonner'
 
 const AuthPageSupabase = () => {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { signIn, signUp, loading } = useAuth()
   
   const [formData, setFormData] = useState({
@@ -23,6 +24,29 @@ const AuthPageSupabase = () => {
   const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState('signin')
   const [showEmailSent, setShowEmailSent] = useState(false)
+
+  // ตรวจสอบ URL parameters เมื่อโหลดหน้า
+  useEffect(() => {
+    const error = searchParams.get('error')
+    const errorCode = searchParams.get('error_code')
+    const errorDescription = searchParams.get('error_description')
+    const confirmed = searchParams.get('confirmed')
+    
+    if (confirmed === 'true') {
+      toast.success('ยืนยันอีเมลสำเร็จ! กรุณาเข้าสู่ระบบ', { duration: 6000 })
+      setError('')
+      // ลบ parameter ออกจาก URL
+      setSearchParams({})
+    } else if (error && errorCode === 'otp_expired') {
+      setError('ลิงก์ยืนยันอีเมลหมดอายุแล้ว กรุณาสมัครสมาชิกใหม่หรือขอส่งอีเมลยืนยันใหม่')
+      toast.error('ลิงก์ยืนยันอีเมลหมดอายุ', { duration: 6000 })
+      // ลบ error parameters ออกจาก URL
+      setSearchParams({})
+    } else if (error) {
+      setError(`เกิดข้อผิดพลาด: ${errorDescription || error}`)
+      setSearchParams({})
+    }
+  }, [searchParams, setSearchParams])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({
