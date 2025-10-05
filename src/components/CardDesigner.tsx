@@ -725,27 +725,46 @@ export function CardDesigner() {
     if (!a4CanvasRef.current) return;
     
     try {
+      // สร้าง canvas ด้วยขนาดที่เหมาะสม
       const canvas = await html2canvas(a4CanvasRef.current, {
         backgroundColor: '#ffffff',
-        scale: 1,
-        useCORS: true
+        scale: 3.779, // Scale สำหรับ A4 300 DPI
+        useCORS: true,
+        allowTaint: true,
+        foreignObjectRendering: true,
+        width: A4_DIMENSIONS.width,
+        height: A4_DIMENSIONS.height
       });
       
+      // สร้าง PDF ขนาด A4
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
-        format: 'a4'
+        format: 'a4',
+        compress: true
       });
       
-      const imgWidth = 210;
-      const imgHeight = 297;
+      const imgWidth = 210; // A4 width in mm
+      const imgHeight = 297; // A4 height in mm
       
-      pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, imgWidth, imgHeight);
-      pdf.save(`${currentDesign.name}_A4_Layout.pdf`);
+      // เพิ่มรูปภาพลง PDF
+      pdf.addImage(
+        canvas.toDataURL('image/jpeg', 0.95), 
+        'JPEG', 
+        0, 
+        0, 
+        imgWidth, 
+        imgHeight,
+        undefined,
+        'FAST'
+      );
       
-      toast.success('ส่งออกเลย์เอาต์ A4 เป็น PDF สำเร็จ!');
+      pdf.save(`${currentDesign.name}_A4_Layout_10Cards.pdf`);
+      
+      toast.success('ส่งออก A4 PDF (10 ภาพ) สำเร็จ!');
     } catch (error) {
-      toast.error('เกิดข้อผิดพลาดในการส่งออก A4');
+      console.error('Export PDF error:', error);
+      toast.error('เกิดข้อผิดพลาดในการส่งออก A4 PDF');
     }
   };
 
@@ -809,53 +828,86 @@ export function CardDesigner() {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
-    const availableWidth = A4_DIMENSIONS.width - a4Settings.marginLeft - a4Settings.marginRight;
-    const availableHeight = A4_DIMENSIONS.height - a4Settings.marginTop - a4Settings.marginBottom;
-    const cardWidth = Math.floor((availableWidth - a4Settings.columnGap) / 2);
-    const cardHeight = Math.floor((availableHeight - 4 * a4Settings.rowGap) / 5);
+    // คำนวณขนาดการ์ดในหน่วย mm สำหรับ A4 (210x297mm)
+    const marginLeftMm = (a4Settings.marginLeft * 210) / A4_DIMENSIONS.width;
+    const marginRightMm = (a4Settings.marginRight * 210) / A4_DIMENSIONS.width;
+    const marginTopMm = (a4Settings.marginTop * 297) / A4_DIMENSIONS.height;
+    const marginBottomMm = (a4Settings.marginBottom * 297) / A4_DIMENSIONS.height;
+    const rowGapMm = (a4Settings.rowGap * 297) / A4_DIMENSIONS.height;
+    const columnGapMm = (a4Settings.columnGap * 210) / A4_DIMENSIONS.width;
+    
+    const availableWidthMm = 210 - marginLeftMm - marginRightMm;
+    const availableHeightMm = 297 - marginTopMm - marginBottomMm;
+    const cardWidthMm = (availableWidthMm - columnGapMm) / 2;
+    const cardHeightMm = (availableHeightMm - 4 * rowGapMm) / 5;
 
+    // สร้าง HTML สำหรับการ์ด 10 ใบ
     let cardsHTML = '';
     for (let index = 0; index < 10; index++) {
       const col = index % 2;
       const row = Math.floor(index / 2);
-      const x = a4Settings.marginLeft + col * (cardWidth + a4Settings.columnGap);
-      const y = a4Settings.marginTop + row * (cardHeight + a4Settings.rowGap);
+      const xMm = marginLeftMm + col * (cardWidthMm + columnGapMm);
+      const yMm = marginTopMm + row * (cardHeightMm + rowGapMm);
 
-      const textsHTML = currentDesign.texts.map(text => `
-        <div style="
-          position: absolute;
-          left: ${(text.x / currentDesign.width) * cardWidth}px;
-          top: ${(text.y / currentDesign.height) * cardHeight}px;
-          font-size: ${(text.fontSize / currentDesign.width) * cardWidth}px;
-          font-family: ${text.fontFamily};
-          color: ${text.color};
-          font-weight: ${text.fontWeight};
-          font-style: ${text.fontStyle};
-        ">${text.content}</div>
-      `).join('');
+      // สร้างข้อความด้วยขนาดที่ปรับตามอัตราส่วน
+      const textsHTML = currentDesign.texts.map(text => {
+        const scaledFontSizeMm = Math.max(2, (text.fontSize * cardWidthMm) / currentDesign.width);
+        const xPosMm = (text.x * cardWidthMm) / currentDesign.width;
+        const yPosMm = (text.y * cardHeightMm) / currentDesign.height;
+        
+        return `
+          <div style="
+            position: absolute;
+            left: ${xPosMm}mm;
+            top: ${yPosMm}mm;
+            font-size: ${scaledFontSizeMm}mm;
+            font-family: '${text.fontFamily}', 'Noto Sans Thai', sans-serif;
+            color: ${text.color};
+            font-weight: ${text.fontWeight};
+            font-style: ${text.fontStyle};
+            line-height: 1.2;
+            white-space: nowrap;
+          ">${text.content}</div>
+        `;
+      }).join('');
 
-      const imagesHTML = currentDesign.images.map(image => `
-        <div style="
-          position: absolute;
-          left: ${(image.x / currentDesign.width) * cardWidth}px;
-          top: ${(image.y / currentDesign.height) * cardHeight}px;
-          width: ${(image.width / currentDesign.width) * cardWidth}px;
-          height: ${(image.height / currentDesign.height) * cardHeight}px;
-          opacity: ${image.opacity};
-        ">
-          <img src="${image.src}" style="width: 100%; height: 100%; object-fit: cover;" />
-        </div>
-      `).join('');
+      // สร้างรูปภาพด้วยขนาดที่ปรับตามอัตราส่วน
+      const imagesHTML = currentDesign.images.map(image => {
+        const widthMm = (image.width * cardWidthMm) / currentDesign.width;
+        const heightMm = (image.height * cardHeightMm) / currentDesign.height;
+        const xPosMm = (image.x * cardWidthMm) / currentDesign.width;
+        const yPosMm = (image.y * cardHeightMm) / currentDesign.height;
+        
+        return `
+          <div style="
+            position: absolute;
+            left: ${xPosMm}mm;
+            top: ${yPosMm}mm;
+            width: ${widthMm}mm;
+            height: ${heightMm}mm;
+            opacity: ${image.opacity};
+            overflow: hidden;
+          ">
+            <img src="${image.src}" style="
+              width: 100%; 
+              height: 100%; 
+              object-fit: cover;
+              display: block;
+            " />
+          </div>
+        `;
+      }).join('');
 
       cardsHTML += `
         <div style="
           position: absolute;
-          left: ${x}px;
-          top: ${y}px;
-          width: ${cardWidth}px;
-          height: ${cardHeight}px;
+          left: ${xMm}mm;
+          top: ${yMm}mm;
+          width: ${cardWidthMm}mm;
+          height: ${cardHeightMm}mm;
           background-color: ${currentDesign.backgroundColor};
-          border: 1px solid #ddd;
+          border: 0.1mm solid #ddd;
+          overflow: hidden;
         ">
           ${textsHTML}
           ${imagesHTML}
@@ -863,13 +915,14 @@ export function CardDesigner() {
       `;
     }
 
+    // สร้าง HTML สำหรับพิมพ์
     const printHTML = `
       <!DOCTYPE html>
       <html>
         <head>
           <meta charset="UTF-8">
           <title>พิมพ์การ์ด A4 - ${currentDesign.name}</title>
-          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&family=Mitr:wght@200;300;400;500;600;700&family=Prompt:wght@100;200;300;400;500;600;700;800;900&family=Kanit:wght@100;200;300;400;500;600;700;800;900&family=Sarabun:wght@100;200;300;400;500;600;700;800&display=swap" rel="stylesheet">
           <style>
             @page {
               size: A4 portrait;
@@ -878,52 +931,78 @@ export function CardDesigner() {
             }
             * {
               box-sizing: border-box;
+              margin: 0;
+              padding: 0;
             }
-            body {
+            html, body {
               margin: 0;
               padding: 0;
               background: white;
-              font-family: 'Inter', 'Noto Sans Thai', sans-serif;
+              font-family: 'Inter', 'Noto Sans Thai', 'Mitr', 'Prompt', 'Kanit', 'Sarabun', sans-serif;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+              width: 210mm;
+              height: 297mm;
+              overflow: hidden;
             }
-            .a4-container {
+            
+            .print-container {
               position: relative;
-              width: ${A4_DIMENSIONS.width}px;
-              height: ${A4_DIMENSIONS.height}px;
+              width: 210mm;
+              height: 297mm;
               background: white;
+              page-break-after: avoid;
+              page-break-inside: avoid;
             }
-            .print-preview {
-              transform: scale(0.283);
-              transform-origin: top left;
-            }
+            
+            /* สำหรับพิมพ์จริง - เต็มหน้าเดียว */
             @media print {
-              .print-preview {
-                transform: scale(1);
+              html, body {
+                width: 210mm !important;
+                height: 297mm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                overflow: hidden !important;
               }
-              body {
-                width: 210mm;
-                height: 297mm;
+              
+              .print-container {
+                width: 210mm !important;
+                height: 297mm !important;
+                page-break-after: avoid !important;
+                page-break-inside: avoid !important;
+              }
+              
+              @page {
+                size: A4 portrait;
+                margin: 0 !important;
               }
             }
+            
+            /* สำหรับแสดงในหน้าจอ */
             @media screen {
               body {
-                padding: 20px;
-                background: #f5f5f5;
+                padding: 10px;
+                background: #f0f0f0;
               }
-              .a4-container {
+              .print-container {
                 box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                margin: 0 auto;
               }
             }
           </style>
         </head>
         <body>
-          <div class="a4-container print-preview">
+          <div class="print-container">
             ${cardsHTML}
           </div>
           <script>
             window.onload = function() {
               setTimeout(function() {
                 window.print();
-              }, 500);
+                setTimeout(function() {
+                  window.close();
+                }, 100);
+              }, 1000);
             };
           </script>
         </body>
@@ -932,13 +1011,8 @@ export function CardDesigner() {
 
     printWindow.document.write(printHTML);
     printWindow.document.close();
-    
-    setTimeout(() => {
-      printWindow.print();
-      printWindow.close();
-    }, 1000);
 
-    toast.success('เริ่มการพิมพ์ A4 Layout...');
+    toast.success('เริ่มการพิมพ์ A4 Layout - 10 ภาพต่อหน้า');
   };
 
   const selectedTextElement = selectedElement && currentDesign.texts.find(t => t.id === selectedElement);
@@ -1730,14 +1804,14 @@ export function CardDesigner() {
             <div className="flex flex-col items-center">
               <h3 className="text-xl font-bold mb-4 text-green-700">🖨️ A4 เต็มพื้นที่ (10 ภาพ)</h3>
               <div className="border-4 border-green-300 shadow-2xl bg-white rounded-xl overflow-hidden" 
-                   style={{ width: '744px', height: '1052px' }}>
+                   style={{ width: '656px', height: '928px' }}>
                 <div 
                   ref={a4CanvasRef}
                   className="relative bg-white w-full h-full"
                   style={{
                     width: `${A4_DIMENSIONS.width}px`,
                     height: `${A4_DIMENSIONS.height}px`,
-                    transform: 'scale(0.3)',
+                    transform: 'scale(0.264583)',
                     transformOrigin: 'top left'
                   }}
                 >
@@ -1835,16 +1909,19 @@ export function CardDesigner() {
                 </Badge>
                 <div className="bg-green-50 p-4 rounded-lg border border-green-200">
                   <p className="text-sm text-green-700 font-medium mb-2">
-                    📐 การ์ดขนาด: <span className="font-bold text-green-800">
+                    📐 การ์ดขนาดจริง: <span className="font-bold text-green-800">
                     {Math.floor((A4_DIMENSIONS.width - a4Settings.marginLeft - a4Settings.marginRight - a4Settings.columnGap) / 2)} × {Math.floor((A4_DIMENSIONS.height - a4Settings.marginTop - a4Settings.marginBottom - 4 * a4Settings.rowGap) / 5)} px
                     </span>
                   </p>
-                  <p className="text-sm text-green-700 font-medium mb-2">
+                  <p className="text-sm text-green-700 font-medium mb-1">
                     🔢 เลย์เอาต์: <span className="font-bold text-green-800">2 คอลัมน์ × 5 แถว = 10 ภาพ</span>
                   </p>
+                  <p className="text-sm text-green-700 font-medium mb-2">
+                    📏 ขนาดพิมพ์: <span className="font-bold text-green-800">~{Math.round((Math.floor((A4_DIMENSIONS.width - a4Settings.marginLeft - a4Settings.marginRight - a4Settings.columnGap) / 2) * 0.264583) / 10) * 10}×{Math.round((Math.floor((A4_DIMENSIONS.height - a4Settings.marginTop - a4Settings.marginBottom - 4 * a4Settings.rowGap) / 5) * 0.264583) / 10) * 10}mm</span>
+                  </p>
                   <p className="text-xs text-green-600">
-                    ✨ ขนาดแสดงผล: 744×1052px (scale 30%)<br/>
-                    📄 ใช้พื้นที่เกือบเต็ม A4 (210×297mm)
+                    ✨ หน้าจอแสดง: 656×928px (26% ของขนาดจริง)<br/>
+                    📄 เต็มพื้นที่ A4 (210×297mm) คุณภาพสูง 300 DPI
                   </p>
                 </div>
               </div>
