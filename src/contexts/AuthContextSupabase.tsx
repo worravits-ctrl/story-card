@@ -16,7 +16,7 @@ interface AuthContextType {
   userProfile: User | null
   loading: boolean
   signIn: (email: string, password: string) => Promise<void>
-  signUp: (email: string, password: string, fullName: string) => Promise<void>
+  signUp: (email: string, password: string, fullName: string) => Promise<any>
   signOut: () => Promise<void>
   refreshUserProfile: () => Promise<void>
 }
@@ -111,11 +111,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = async (email: string, password: string, fullName: string) => {
     setLoading(true)
     try {
-      const { user } = await supabaseSignUp(email, password, fullName)
-      if (user) {
+      const result = await supabaseSignUp(email, password, fullName)
+      if (result.user) {
         // Profile will be created automatically via auth state change
-        console.log('User signed up successfully:', user.email)
+        console.log('User signed up successfully:', result.user.email)
       }
+      return result
     } catch (error: any) {
       throw new Error(error.message || 'สมัครสมาชิกไม่สำเร็จ')
     } finally {

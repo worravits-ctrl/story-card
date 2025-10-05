@@ -21,6 +21,19 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
   }
 })
 
+// Handle email confirmation in URL
+if (typeof window !== 'undefined') {
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_IN' && session) {
+      console.log('User signed in via email confirmation')
+      // Redirect to dashboard if confirmed via email
+      if (window.location.pathname === '/auth' && window.location.search.includes('confirmed=true')) {
+        window.location.href = '/dashboard'
+      }
+    }
+  })
+}
+
 // Database Types
 export interface User {
   id: string
@@ -70,10 +83,14 @@ export interface ImageElement {
 
 // Authentication Functions
 export const signUp = async (email: string, password: string, fullName: string) => {
+  // สำหรับ production - บังคับยืนยันอีเมล
+  const redirectUrl = `${window.location.origin}/auth?confirmed=true`
+  
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
+      emailRedirectTo: redirectUrl,
       data: {
         full_name: fullName,
         role: 'user'
@@ -82,6 +99,20 @@ export const signUp = async (email: string, password: string, fullName: string) 
   })
   
   if (error) throw error
+  
+  console.log('Sign up result:', data)
+  
+  // ใน production mode - user ต้องยืนยันอีเมลก่อน
+  if (data.user && !data.user.email_confirmed_at) {
+    console.log('User created but needs email confirmation')
+    // ไม่พยายาม auto sign-in เพราะต้องการให้ยืนยันอีเมลก่อน
+    return {
+      ...data,
+      needsConfirmation: true,
+      message: 'กรุณาตรวจสอบอีเมลและคลิกลิงก์ยืนยันเพื่อเปิดใช้งานบัญชี'
+    }
+  }
+  
   return data
 }
 
@@ -91,7 +122,22 @@ export const signIn = async (email: string, password: string) => {
     password
   })
   
-  if (error) throw error
+  if (error) {
+    // ตรวจสอบ error เฉพาะเรื่องการยืนยันอีเมล
+    if (error.message.includes('Email not confirmed') || 
+        error.message.includes('email_not_confirmed') ||
+        error.message.includes('signup_disabled')) {
+      throw new Error('กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ ตรวจสอบกล่องจดหมายและโฟลเดอร์ Spam')
+    }
+    throw error
+  }
+  
+  // ตรวจสอบเพิ่มเติมว่า user ยืนยันอีเมลแล้วหรือยัง
+  if (data.user && !data.user.email_confirmed_at) {
+    throw new Error('บัญชีของคุณยังไม่ได้รับการยืนยัน กรุณาตรวจสอบอีเมลและคลิกลิงก์ยืนยัน')
+  }
+  
+  console.log('Sign in successful for confirmed user:', data.user?.email)
   return data
 }
 
@@ -386,3 +432,29 @@ export const promoteCurrentUserToAdmin = async () => {
 
 // Export the User type as UserProfile for compatibility
 export type UserProfile = User
+
+// Resend confirmation email
+export const resendConfirmation = async (email: string) => {
+  const redirectUrl = window.location.origin + '/auth?confirmed=true'
+  
+  const { error } = await supabase.auth.resend({
+    type: 'signup',
+    email: email,
+    options: {
+      emailRedirectTo: redirectUrl
+    }
+  })
+  
+  if (error) throw error
+  return { success: true }
+}
+
+// Manual email confirmation for admin use
+export const confirmUserEmail = async (userId: string) => {
+  const { error } = await supabase.rpc('confirm_user_email', {
+    user_id: userId
+  })
+  
+  if (error) throw error
+  return { success: true }
+}

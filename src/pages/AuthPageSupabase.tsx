@@ -22,6 +22,7 @@ const AuthPageSupabase = () => {
   })
   const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState('signin')
+  const [showEmailSent, setShowEmailSent] = useState(false)
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({
@@ -69,9 +70,23 @@ const AuthPageSupabase = () => {
     }
 
     try {
-      await signUp(formData.email, formData.password, formData.fullName)
-      toast.success('สมัครสมาชิกสำเร็จ! กรุณาตรวจสอบอีเมลเพื่อยืนยันบัญชี')
-      setActiveTab('signin')
+      const result = await signUp(formData.email, formData.password, formData.fullName)
+      
+      if (result.needsConfirmation || (result.user && !result.user.email_confirmed_at)) {
+        setShowEmailSent(true)
+        toast.success('ส่งอีเมลยืนยันแล้ว! กรุณาตรวจสอบอีเมลและคลิกลิงก์ยืนยัน', {
+          duration: 8000
+        })
+        setActiveTab('signin')
+        setError('')
+      } else if (result.user && result.session) {
+        toast.success('สมัครสมาชิกและเข้าสู่ระบบสำเร็จ!')
+        navigate('/dashboard')
+      } else {
+        toast.success('สมัครสมาชิกสำเร็จ! กรุณาตรวจสอบอีเมลเพื่อยืนยันบัญชี')
+        setShowEmailSent(true)
+        setActiveTab('signin')
+      }
     } catch (err: any) {
       setError(err.message)
     }
@@ -105,6 +120,19 @@ const AuthPageSupabase = () => {
               {error && (
                 <Alert variant="destructive" className="mt-4">
                   <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              {showEmailSent && (
+                <Alert className="mt-4 border-green-200 bg-green-50">
+                  <Mail className="h-4 w-4 text-green-600" />
+                  <AlertDescription className="text-green-800">
+                    <div className="space-y-1">
+                      <p className="font-medium">ส่งอีเมลยืนยันแล้ว!</p>
+                      <p className="text-sm">กรุณาตรวจสอบอีเมล ({formData.email}) และคลิกลิงก์ยืนยัน</p>
+                      <p className="text-sm">ตรวจสอบทั้งกล่องจดหมายหลักและโฟลเดอร์ Spam</p>
+                    </div>
+                  </AlertDescription>
                 </Alert>
               )}
 
@@ -251,7 +279,45 @@ const AuthPageSupabase = () => {
           </CardContent>
         </Card>
 
-        <div className="mt-8 text-center text-xs text-gray-500">
+        {/* Email Info */}
+        <Card className="mt-4 border-blue-200 bg-blue-50">
+          <CardContent className="p-4">
+            <div className="text-center">
+              <Mail className="w-8 h-8 text-blue-600 mx-auto mb-2" />
+              <h3 className="font-semibold text-blue-900 mb-2">การยืนยันอีเมลสำคัญ</h3>
+              <div className="text-sm text-blue-700 space-y-1">
+                <p>• <strong>บังคับยืนยันอีเมล</strong> ก่อนใช้งานระบบ</p>
+                <p>• ตรวจสอบทั้งกล่องจดหมายและโฟลเดอร์ Spam</p>
+                <p>• คลิกลิงก์ในอีเมลแล้วกลับมาเข้าสู่ระบบ</p>
+                <p>• ไม่สามารถเข้าใช้งานได้หากยังไม่ยืนยัน</p>
+              </div>
+              
+              {showEmailSent && formData.email && (
+                <div className="mt-3 pt-3 border-t border-blue-200">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        const { resendConfirmation } = await import('@/lib/supabase')
+                        await resendConfirmation(formData.email)
+                        toast.success('ส่งอีเมลยืนยันใหม่แล้ว!')
+                      } catch (err: any) {
+                        toast.error('ไม่สามารถส่งอีเมลได้: ' + err.message)
+                      }
+                    }}
+                    className="text-xs"
+                  >
+                    <Mail className="w-3 h-3 mr-1" />
+                    ส่งอีเมลใหม่
+                  </Button>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="mt-4 text-center text-xs text-gray-500">
           <p>การสมัครสมาชิกแสดงว่าคุณยอมรับเงื่อนไขการใช้บริการ</p>
         </div>
       </div>
