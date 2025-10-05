@@ -33,11 +33,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     console.log('AuthProvider initializing...')
     console.log('Current URL:', window.location.href)
     
-    getCurrentUser().then((user) => {
+    getCurrentUser().then(async (user) => {
       console.log('Initial user check:', user?.email || 'No user')
       setUser(user)
       if (user) {
-        loadUserProfile(user.id)
+        try {
+          // Load profile with timeout
+          await Promise.race([
+            loadUserProfile(user.id),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Initial profile loading timeout')), 8000)
+            )
+          ])
+        } catch (error) {
+          console.error('Initial profile loading failed:', error)
+          // Set minimal profile
+          setUserProfile({
+            id: user.id,
+            email: user.email || '',
+            full_name: user.user_metadata?.full_name || 'User',
+            role: 'user',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+        }
       }
       setLoading(false)
     }).catch((error) => {
@@ -54,14 +73,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(session?.user ?? null)
           
           if (session?.user) {
-            await loadUserProfile(session.user.id)
+            // Load profile with timeout protection
+            Promise.race([
+              loadUserProfile(session.user.id),
+              new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Profile loading timeout')), 10000)
+              )
+            ]).catch((error) => {
+              console.error('Profile loading failed or timed out:', error)
+              // Set minimal profile to continue
+              setUserProfile({
+                id: session.user.id,
+                email: session.user.email || '',
+                full_name: session.user.user_metadata?.full_name || 'User',
+                role: 'user',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              })
+            }).finally(() => {
+              console.log('Setting loading to false after profile attempt')
+              setLoading(false)
+            })
           } else {
             setUserProfile(null)
+            setLoading(false)
           }
         } catch (error) {
           console.error('Error handling auth state change:', error)
-        } finally {
-          console.log('Setting loading to false')
           setLoading(false)
         }
       }
@@ -86,6 +124,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const newProfile = await createUserProfile(user)
           console.log('New profile created:', newProfile)
           setUserProfile(newProfile)
+        } else {
+          console.error('No current user found when creating profile')
+          // Set basic profile to prevent infinite loading
+          setUserProfile({
+            id: userId,
+            email: 'unknown@email.com',
+            full_name: 'User',
+            role: 'user',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
         }
       } catch (createError) {
         console.error('Error creating profile:', createError)

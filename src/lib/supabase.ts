@@ -310,14 +310,31 @@ export const createUserProfile = async (user: any) => {
 }
 
 export const getUserProfile = async (userId: string) => {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .single()
+  console.log('Fetching profile from database for user:', userId)
   
-  if (error) throw error
-  return data
+  try {
+    const { data, error } = await Promise.race([
+      supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single(),
+      new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Database query timeout')), 5000)
+      )
+    ])
+    
+    if (error) {
+      console.log('Profile query error:', error.message)
+      throw error
+    }
+    
+    console.log('Profile fetched successfully:', data)
+    return data
+  } catch (error) {
+    console.error('getUserProfile failed:', error)
+    throw error
+  }
 }
 
 // Database Helper Functions
