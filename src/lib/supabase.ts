@@ -104,10 +104,14 @@ export interface ImageElement {
 // Authentication Functions
 export const signUp = async (email: string, password: string, fullName: string) => {
   // ใช้ URL ปัจจุบันที่แน่นอน
-  const currentPort = window.location.port || '8080'
+  const currentPort = window.location.port
   const currentHost = window.location.hostname || 'localhost'
   const protocol = window.location.protocol || 'http:'
-  const redirectUrl = `${protocol}//${currentHost}:${currentPort}/auth?confirmed=true`
+  
+  // สร้าง URL โดยใส่ port เฉพาะ localhost เท่านั้น
+  const redirectUrl = currentPort && currentHost === 'localhost' 
+    ? `${protocol}//${currentHost}:${currentPort}/auth?confirmed=true`
+    : `${protocol}//${currentHost}/auth?confirmed=true`
   
   console.log('Using redirect URL:', redirectUrl)
   
@@ -461,10 +465,14 @@ export type UserProfile = User
 // Resend confirmation email
 export const resendConfirmation = async (email: string) => {
   // ใช้ URL ปัจจุบันที่แน่นอน
-  const currentPort = window.location.port || '8080'
+  const currentPort = window.location.port
   const currentHost = window.location.hostname || 'localhost'
   const protocol = window.location.protocol || 'http:'
-  const redirectUrl = `${protocol}//${currentHost}:${currentPort}/auth?confirmed=true`
+  
+  // สร้าง URL โดยใส่ port เฉพาะ localhost เท่านั้น
+  const redirectUrl = currentPort && currentHost === 'localhost' 
+    ? `${protocol}//${currentHost}:${currentPort}/auth?confirmed=true`
+    : `${protocol}//${currentHost}/auth?confirmed=true`
   
   console.log('Resending confirmation to:', redirectUrl)
   
@@ -496,10 +504,14 @@ export const resetEmailConfirmation = async (email: string) => {
     // ลองลบ user ที่ยัง unconfirmed และสร้างใหม่ (ถ้าเป็น development)
     console.log('Attempting to reset email confirmation for:', email)
     
-    const currentPort = window.location.port || '8080'
+    const currentPort = window.location.port
     const currentHost = window.location.hostname || 'localhost'
     const protocol = window.location.protocol || 'http:'
-    const redirectUrl = `${protocol}//${currentHost}:${currentPort}/auth?confirmed=true`
+    
+    // สร้าง URL โดยใส่ port เฉพาะ localhost เท่านั้น
+    const redirectUrl = currentPort && currentHost === 'localhost' 
+      ? `${protocol}//${currentHost}:${currentPort}/auth?confirmed=true`
+      : `${protocol}//${currentHost}/auth?confirmed=true`
     
     // ส่งอีเมลใหม่
     const { error } = await supabase.auth.resend({
