@@ -181,23 +181,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signOut = async () => {
-    setLoading(true)
-    try {
-      // Clear state first
-      setUser(null)
-      setUserProfile(null)
-      
-      // Then clear auth data (this will redirect)
-      await supabaseSignOut()
-    } catch (error: any) {
-      console.error('Signout error:', error)
-      // Force clear even if error
-      setUser(null)
-      setUserProfile(null)
-      window.location.href = '/auth'
-    } finally {
-      setLoading(false)
-    }
+    console.log('AuthContext: Starting immediate logout...')
+    
+    // Clear state immediately - no loading state
+    setUser(null)
+    setUserProfile(null)
+    setLoading(false)
+    
+    // Clear auth data and redirect immediately (don't await)
+    supabaseSignOut().catch(error => {
+      console.log('Background signout error (ignored):', error)
+    })
   }
 
   const refreshUserProfile = async () => {

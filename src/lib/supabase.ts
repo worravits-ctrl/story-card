@@ -215,39 +215,33 @@ export const refreshSession = async () => {
 }
 
 export const signOut = async () => {
-  try {
-    // Force sign out with scope 'global' to clear all sessions
-    const { error } = await supabase.auth.signOut({ scope: 'global' })
-    if (error) console.error('Signout error:', error)
-  } catch (error) {
-    console.error('Error during signout:', error)
-  }
+  console.log('Starting immediate logout process...')
   
-  // Force clear all storage regardless of API response
+  // Immediately clear all local data first (don't wait for API)
   clearAuthData()
   
-  // Force reload to ensure clean state
-  setTimeout(() => {
-    window.location.href = '/auth'
-  }, 100)
+  // Try to notify server but don't wait for it
+  supabase.auth.signOut({ scope: 'global' }).catch(error => {
+    console.log('Server signout error (ignored):', error)
+  })
+  
+  // Force immediate navigation - no timeout
+  window.location.replace('/auth')
 }
 
 export const supabaseSignOut = signOut
 
-// Force clear all auth data
+// Force clear all auth data immediately
 export const clearAuthData = () => {
+  console.log('Clearing all auth data immediately...')
+  
   try {
-    // Clear all localStorage
-    localStorage.clear()
-    
-    // Clear sessionStorage
-    sessionStorage.clear()
-    
-    // Clear specific Supabase keys that might remain
+    // Clear specific Supabase keys first (faster than clearing all)
     const keysToRemove = [
       'supabase.auth.token',
       'sb-auth-token',
-      'supabase-auth-token'
+      'supabase-auth-token',
+      'sb-wjongayjskbbmlgxivqq-auth-token', // Project specific
     ]
     
     keysToRemove.forEach(key => {
@@ -255,8 +249,9 @@ export const clearAuthData = () => {
       sessionStorage.removeItem(key)
     })
     
-    // Clear any remaining sb- prefixed keys
-    Object.keys(localStorage).forEach(key => {
+    // Clear any remaining sb- or auth-related keys
+    const allKeys = [...Object.keys(localStorage), ...Object.keys(sessionStorage)]
+    allKeys.forEach(key => {
       if (key.startsWith('sb-') || key.includes('supabase') || key.includes('auth')) {
         localStorage.removeItem(key)
       }
@@ -271,6 +266,20 @@ export const clearAuthData = () => {
   } catch (error) {
     console.error('Error clearing auth data:', error)
   }
+}
+
+// Fast logout - immediate response
+export const fastLogout = () => {
+  console.log('Fast logout initiated...')
+  clearAuthData()
+  window.location.replace('/auth')
+}
+
+// Instant refresh - clear cache and reload
+export const instantRefresh = () => {
+  console.log('Instant refresh initiated...')
+  clearAuthData()
+  window.location.reload()
 }
 
 // Add force refresh function

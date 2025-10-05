@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContextSupabase'
-import { getUserCardDesigns, deleteCardDesign, clearAuthData, refreshSession } from '@/lib/supabase'
+import { getUserCardDesigns, deleteCardDesign, clearAuthData, refreshSession, fastLogout, instantRefresh } from '@/lib/supabase'
 import type { CardDesign } from '@/lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -60,14 +60,14 @@ export default function Dashboard() {
     }
   }
 
-  const handleSignOut = async () => {
-    try {
-      await signOut()
-      navigate('/')
-    } catch (error) {
-      console.error('Error signing out:', error)
-      toast.error('ไม่สามารถออกจากระบบได้')
-    }
+  const handleSignOut = () => {
+    // Use fast logout - no waiting, immediate response
+    fastLogout()
+  }
+
+  const handleInstantRefresh = () => {
+    // Use instant refresh - immediate cache clear and reload
+    instantRefresh()
   }
 
   if (!user || !userProfile) {
@@ -151,11 +151,8 @@ export default function Dashboard() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => {
-                    clearAuthData()
-                    window.location.reload()
-                  }}
-                  title="ล้างข้อมูล Cache"
+                  onClick={handleInstantRefresh}
+                  title="รีเฟรชทันที - ล้างข้อมูล Cache"
                 >
                   🔄
                 </Button>
@@ -163,6 +160,7 @@ export default function Dashboard() {
                   variant="outline"
                   size="sm"
                   onClick={handleSignOut}
+                  title="ออกจากระบบทันที - ไม่ต้องรอ"
                 >
                   <LogOut className="w-4 h-4 mr-2" />
                   ออกจากระบบ
