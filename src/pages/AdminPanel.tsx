@@ -16,6 +16,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox'
 import { 
   ArrowLeft,
   Users, 
@@ -34,7 +38,12 @@ import {
   TrendingUp,
   Clock,
   Eye,
-  Ban
+  Ban,
+  Edit,
+  Check,
+  X,
+  MoreVertical,
+  UserCog
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -46,6 +55,10 @@ export default function AdminPanel() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [activeTab, setActiveTab] = useState<'users' | 'designs' | 'analytics'>('users')
+  const [editingUser, setEditingUser] = useState<UserProfile | null>(null)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([])
+  const [showBulkActions, setShowBulkActions] = useState(false)
 
   useEffect(() => {
     if (!user) {
@@ -132,6 +145,88 @@ export default function AdminPanel() {
     } catch (error) {
       console.error('Error banning user:', error)
       toast.error('ไม่สามารถระงับผู้ใช้ได้')
+    }
+  }
+
+  // Handle user editing
+  const handleEditUser = (user: UserProfile) => {
+    setEditingUser(user)
+    setShowEditModal(true)
+  }
+
+  const handleSaveUser = async (updatedUser: UserProfile) => {
+    try {
+      await updateUserRole(updatedUser.id, updatedUser.role)
+      setUsers(prev => prev.map(u => 
+        u.id === updatedUser.id ? updatedUser : u
+      ))
+      setShowEditModal(false)
+      setEditingUser(null)
+      toast.success('อัปเดตข้อมูลผู้ใช้สำเร็จ!')
+    } catch (error) {
+      console.error('Error updating user:', error)
+      toast.error('ไม่สามารถอัปเดตข้อมูลได้')
+    }
+  }
+
+  // Handle bulk actions
+  const handleSelectUser = (userId: string) => {
+    setSelectedUsers(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    )
+  }
+
+  const handleSelectAllUsers = () => {
+    if (selectedUsers.length === filteredUsers.length) {
+      setSelectedUsers([])
+    } else {
+      setSelectedUsers(filteredUsers.map(u => u.id))
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedUsers.includes(user?.id || '')) {
+      toast.error('ไม่สามารถลบตัวเองได้')
+      return
+    }
+
+    if (!confirm(`คุณแน่ใจหรือไม่ที่จะลบผู้ใช้ ${selectedUsers.length} คน?`)) {
+      return
+    }
+
+    try {
+      for (const userId of selectedUsers) {
+        await deleteUser(userId)
+      }
+      setUsers(prev => prev.filter(u => !selectedUsers.includes(u.id)))
+      setSelectedUsers([])
+      toast.success(`ลบผู้ใช้ ${selectedUsers.length} คนสำเร็จ!`)
+    } catch (error) {
+      console.error('Error bulk deleting users:', error)
+      toast.error('ไม่สามารถลบผู้ใช้ได้')
+    }
+  }
+
+  const handleBulkChangeRole = async (role: 'user' | 'admin') => {
+    if (selectedUsers.includes(user?.id || '') && role === 'user') {
+      toast.error('ไม่สามารถลดสิทธิ์ตัวเองได้')
+      return
+    }
+
+    try {
+      for (const userId of selectedUsers) {
+        await updateUserRole(userId, role)
+      }
+      setUsers(prev => prev.map(u => 
+        selectedUsers.includes(u.id) ? { ...u, role } : u
+      ))
+      setSelectedUsers([])
+      toast.success(`เปลี่ยนสิทธิ์ผู้ใช้ ${selectedUsers.length} คนเป็น ${role} สำเร็จ!`)
+    } catch (error) {
+      console.error('Error bulk changing role:', error)
+      toast.error('ไม่สามารถเปลี่ยนสิทธิ์ได้')
     }
   }
 
@@ -383,11 +478,67 @@ export default function AdminPanel() {
           </div>
         ) : activeTab === 'users' ? (
           <div className="space-y-4">
+            {/* Bulk Actions Header */}
+            {filteredUsers.length > 0 && (
+              <Card className="bg-blue-50 border-blue-200">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <Checkbox
+                        checked={selectedUsers.length === filteredUsers.length}
+                        onCheckedChange={handleSelectAllUsers}
+                      />
+                      <span className="text-sm font-medium">
+                        {selectedUsers.length > 0 
+                          ? `เลือกแล้ว ${selectedUsers.length} คน`
+                          : 'เลือกทั้งหมด'
+                        }
+                      </span>
+                    </div>
+                    
+                    {selectedUsers.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleBulkChangeRole('admin')}
+                        >
+                          <Crown className="w-4 h-4 mr-1" />
+                          ตั้งเป็น Admin
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleBulkChangeRole('user')}
+                        >
+                          <User className="w-4 h-4 mr-1" />
+                          ตั้งเป็น User
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={handleBulkDelete}
+                        >
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          ลบที่เลือก
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* User List */}
             {filteredUsers.map((user) => (
               <Card key={user.id}>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
+                      <Checkbox
+                        checked={selectedUsers.includes(user.id)}
+                        onCheckedChange={() => handleSelectUser(user.id)}
+                      />
                       <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
                         <User className="w-6 h-6 text-gray-600" />
                       </div>
@@ -410,6 +561,14 @@ export default function AdminPanel() {
                     <div className="flex items-center gap-2">
                       {user.id !== user?.id && (
                         <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleEditUser(user)}
+                          >
+                            <Edit className="w-4 h-4 mr-1" />
+                            แก้ไข
+                          </Button>
                           <Button
                             size="sm"
                             variant="outline"
@@ -644,6 +803,76 @@ export default function AdminPanel() {
           </div>
         )}
       </main>
+
+      {/* Edit User Modal */}
+      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>แก้ไขข้อมูลผู้ใช้</DialogTitle>
+          </DialogHeader>
+          
+          {editingUser && (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="fullName">ชื่อเต็ม</Label>
+                <Input
+                  id="fullName"
+                  type="text"
+                  value={editingUser.full_name || ''}
+                  onChange={(e) => setEditingUser({
+                    ...editingUser,
+                    full_name: e.target.value
+                  })}
+                  placeholder="กรอกชื่อเต็ม"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email">อีเมล</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={editingUser.email}
+                  disabled
+                  className="bg-gray-100"
+                  placeholder="อีเมลไม่สามารถแก้ไขได้"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="role">บทบาท</Label>
+                <Select
+                  value={editingUser.role}
+                  onValueChange={(value) => setEditingUser({
+                    ...editingUser,
+                    role: value as 'user' | 'admin'
+                  })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="เลือกบทบาท" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="user">User</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowEditModal(false)}
+            >
+              ยกเลิก
+            </Button>
+            <Button onClick={() => editingUser && handleSaveUser(editingUser)}>
+              บันทึก
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
