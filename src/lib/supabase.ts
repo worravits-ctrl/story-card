@@ -393,6 +393,20 @@ export const deleteCardDesign = async (id: string) => {
 // Admin Functions
 export const getAllUsers = async (): Promise<User[]> => {
   try {
+    console.log('Fetching all users for admin...')
+    
+    // ลองใช้ RPC function ก่อน
+    const { data: rpcData, error: rpcError } = await supabase
+      .rpc('get_all_users_for_admin')
+    
+    if (!rpcError && rpcData) {
+      console.log(`Admin RPC fetched ${rpcData?.length || 0} users`)
+      return rpcData
+    }
+    
+    console.log('RPC failed, trying direct query:', rpcError?.message)
+    
+    // Fallback ไปใช้ direct query
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -403,6 +417,7 @@ export const getAllUsers = async (): Promise<User[]> => {
       throw error
     }
     
+    console.log(`Direct query fetched ${data?.length || 0} users`)
     return data || []
   } catch (error) {
     console.error('Error in getAllUsers:', error)
@@ -459,39 +474,50 @@ export const getAllCardDesigns = async () => {
   }
 }
 
-// Admin-specific function to get all cards (bypass RLS)
+// Admin-specific function to get all cards (bypass RLS using RPC)
 export const getAdminAllCardDesigns = async () => {
   try {
-    console.log('Admin fetching ALL card designs (bypassing RLS)...')
+    console.log('Admin fetching ALL card designs via RPC (bypassing RLS)...')
     
-    // สำหรับ Admin ใช้ service_role หรือ query แบบพิเศษ
+    // ใช้ RPC function สำหรับ Admin
     const { data, error } = await supabase
-      .from('card_designs')
-      .select(`
-        id,
-        name,
-        width,
-        height,
-        background_color,
-        texts,
-        images,
-        user_id,
-        created_at,
-        updated_at
-      `)
-      .order('created_at', { ascending: false })
+      .rpc('get_all_card_designs_for_admin')
     
     if (error) {
-      console.error('Admin query error:', error)
-      throw error
+      console.error('RPC Admin query error:', error)
+      console.log('Falling back to direct query...')
+      
+      // Fallback: ลอง direct query
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from('card_designs')
+        .select(`
+          id,
+          name,
+          width,
+          height,
+          background_color,
+          texts,
+          images,
+          user_id,
+          created_at,
+          updated_at
+        `)
+        .order('created_at', { ascending: false })
+      
+      if (fallbackError) {
+        console.error('Fallback query also failed:', fallbackError)
+        throw fallbackError
+      }
+      
+      console.log(`Admin fallback fetched ${fallbackData?.length || 0} card designs`)
+      return fallbackData || []
     }
     
-    console.log(`Admin fetched ${data?.length || 0} card designs`)
+    console.log(`Admin RPC fetched ${data?.length || 0} card designs`)
     return data || []
   } catch (error) {
     console.error('Error in getAdminAllCardDesigns:', error)
-    // Fallback to regular function
-    return getAllCardDesigns()
+    throw error
   }
 }
 
