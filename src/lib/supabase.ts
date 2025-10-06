@@ -339,10 +339,34 @@ export const getUserProfile = async (userId: string) => {
     }
     
     console.log('Profile fetched successfully:', data)
+    console.log('User role:', data?.role, 'Is admin:', data?.role === 'admin')
     return data
   } catch (error) {
     console.error('getUserProfile failed:', error)
     throw error
+  }
+}
+
+// Debug function to check current user role
+export const checkCurrentUserRole = async () => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      console.log('No current user')
+      return null
+    }
+    
+    const profile = await getUserProfile(user.id)
+    console.log('Current user role check:', {
+      userId: user.id,
+      email: user.email,
+      profile: profile,
+      role: profile?.role
+    })
+    return profile
+  } catch (error) {
+    console.error('Error checking user role:', error)
+    return null
   }
 }
 

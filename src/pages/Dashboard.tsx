@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContextSupabase'
-import { getUserCardDesigns, deleteCardDesign, clearAuthData, refreshSession, fastLogout, instantRefresh } from '@/lib/supabase'
+import { getUserCardDesigns, deleteCardDesign, clearAuthData, refreshSession, fastLogout, instantRefresh, checkCurrentUserRole } from '@/lib/supabase'
 import type { CardDesign } from '@/lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -137,14 +137,19 @@ export default function Dashboard() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => {
+                  onClick={async () => {
                     console.log('Debug: Current user:', user)
                     console.log('Debug: User profile:', userProfile)
                     console.log('Debug: Environment:', import.meta.env.MODE)
                     console.log('Debug: URL:', window.location.href)
+                    
+                    // ตรวจสอบ role ใน database อีกครั้ง
+                    const freshProfile = await checkCurrentUserRole()
+                    console.log('Debug: Fresh profile from DB:', freshProfile)
+                    
                     toast.info('ข้อมูล Debug แสดงใน Console')
                   }}
-                  title="Debug Info"
+                  title="Debug Info + Role Check"
                 >
                   🐛
                 </Button>

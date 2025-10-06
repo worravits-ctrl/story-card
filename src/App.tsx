@@ -45,8 +45,31 @@ const App = () => {
 
     function AdminRoute({ children }: { children: React.ReactNode }) {
       const { user, userProfile } = useAuth()
-      console.log('AdminRoute check:', { hasUser: !!user, userProfile })
-      return user && userProfile?.role === 'admin' ? children : <Navigate to="/dashboard" />
+      console.log('AdminRoute check:', { 
+        hasUser: !!user, 
+        userEmail: user?.email,
+        userProfile: userProfile,
+        role: userProfile?.role,
+        isAdmin: userProfile?.role === 'admin'
+      })
+      
+      if (!user) {
+        console.log('AdminRoute: No user, redirecting to auth')
+        return <Navigate to="/auth" />
+      }
+      
+      if (!userProfile) {
+        console.log('AdminRoute: No userProfile, showing loading')
+        return <div className="min-h-screen flex items-center justify-center">Loading...</div>
+      }
+      
+      if (userProfile.role !== 'admin') {
+        console.log('AdminRoute: Not admin, redirecting to dashboard')
+        return <Navigate to="/dashboard" />
+      }
+      
+      console.log('AdminRoute: Access granted to admin')
+      return <>{children}</>
     }
     
     // Debug current path and user state
