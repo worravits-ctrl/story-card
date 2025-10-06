@@ -420,17 +420,20 @@ export const updateCardDesignAsAdmin = async (id: string, updates: Partial<CardD
     if (rpcError) {
       console.log('RPC function not found, falling back to direct update:', rpcError)
       
-      // ถ้า RPC ไม่มี ให้ใช้ direct update
+      // Fallback: ลองใช้ direct update (อาจทำงานถ้ามี RLS policy สำหรับ admin)
       const { data, error } = await supabase
         .from('card_designs')
-        .update(updates)
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', id)
         .select()
         .single()
       
       if (error) {
         console.error('Direct update failed:', error)
-        throw error
+        throw new Error(`Update failed: ${error.message}. Please create RLS policy or RPC function for admin updates in Supabase database.`)
       }
       
       console.log('Direct update successful:', data)
