@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContextSupabase'
 import { 
   getAllUsers, 
-  getAllCardDesigns, 
+  getAllCardDesigns,
+  getAdminAllCardDesigns, 
   updateUserRole, 
   deleteUser, 
   deleteCardDesign,
@@ -81,7 +82,7 @@ export default function AdminPanel() {
       console.log('Loading admin data...')
       const [usersData, designsData] = await Promise.all([
         getAllUsers(),
-        getAllCardDesigns()
+        getAdminAllCardDesigns()
       ])
       console.log('Users data:', usersData)
       console.log('Designs data:', designsData)
@@ -769,6 +770,18 @@ export default function AdminPanel() {
                     <h3 className="font-semibold text-gray-900 truncate">
                       {design.name}
                     </h3>
+                    
+                    {/* ข้อมูลเจ้าของการ์ด */}
+                    <div className="flex items-center gap-2 p-2 bg-gray-50 rounded text-xs">
+                      <User className="w-3 h-3 text-gray-500" />
+                      <span className="font-medium text-gray-700">
+                        {users.find(u => u.id === design.user_id)?.full_name || 'ไม่ทราบชื่อ'}
+                      </span>
+                      <Badge variant="outline" className="text-xs px-1 py-0">
+                        {users.find(u => u.id === design.user_id)?.email || 'ไม่ทราบอีเมล'}
+                      </Badge>
+                    </div>
+                    
                     <div className="flex items-center gap-2 text-xs text-gray-600">
                       <span>{design.width}×{design.height}</span>
                       <span>•</span>
@@ -776,9 +789,10 @@ export default function AdminPanel() {
                       <span>•</span>
                       <span>{design.images.length}I</span>
                     </div>
-                    <p className="text-xs text-gray-500">
-                      {new Date(design.updated_at).toLocaleDateString('th-TH')}
-                    </p>
+                    <div className="text-xs text-gray-500 space-y-1">
+                      <p>สร้าง: {new Date(design.created_at).toLocaleDateString('th-TH')}</p>
+                      <p>แก้ไข: {new Date(design.updated_at).toLocaleDateString('th-TH')}</p>
+                    </div>
                   </div>
 
                   <Button

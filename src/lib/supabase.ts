@@ -412,7 +412,25 @@ export const getAllUsers = async (): Promise<User[]> => {
 
 export const getAllCardDesigns = async () => {
   try {
-    console.log('Fetching card designs...')
+    console.log('Fetching card designs for admin...')
+    
+    // ตรวจสอบ current user และ role
+    const currentUser = await supabase.auth.getUser()
+    console.log('Current user for getAllCardDesigns:', currentUser.data.user?.email)
+    
+    // ลองใช้ RPC function สำหรับ admin (bypass RLS)
+    const { data: rpcData, error: rpcError } = await supabase
+      .rpc('get_all_card_designs_for_admin')
+      .order('created_at', { ascending: false })
+    
+    if (!rpcError && rpcData) {
+      console.log('Got data from RPC:', rpcData.length, 'designs')
+      return rpcData
+    }
+    
+    console.log('RPC failed, trying direct query:', rpcError?.message)
+    
+    // Fallback to direct query
     const { data, error } = await supabase
       .from('card_designs')
       .select(`
@@ -425,16 +443,55 @@ export const getAllCardDesigns = async () => {
       `)
       .order('created_at', { ascending: false })
     
+    console.log('Raw Supabase response:', { data, error })
+    
     if (error) {
       console.error('Supabase error in getAllCardDesigns:', error)
       throw error
     }
     
     console.log('Card designs fetched:', data?.length || 0, 'designs')
+    console.log('First few designs:', data?.slice(0, 3))
     return data || []
   } catch (error) {
     console.error('Error in getAllCardDesigns:', error)
     throw error
+  }
+}
+
+// Admin-specific function to get all cards (bypass RLS)
+export const getAdminAllCardDesigns = async () => {
+  try {
+    console.log('Admin fetching ALL card designs (bypassing RLS)...')
+    
+    // สำหรับ Admin ใช้ service_role หรือ query แบบพิเศษ
+    const { data, error } = await supabase
+      .from('card_designs')
+      .select(`
+        id,
+        name,
+        width,
+        height,
+        background_color,
+        texts,
+        images,
+        user_id,
+        created_at,
+        updated_at
+      `)
+      .order('created_at', { ascending: false })
+    
+    if (error) {
+      console.error('Admin query error:', error)
+      throw error
+    }
+    
+    console.log(`Admin fetched ${data?.length || 0} card designs`)
+    return data || []
+  } catch (error) {
+    console.error('Error in getAdminAllCardDesigns:', error)
+    // Fallback to regular function
+    return getAllCardDesigns()
   }
 }
 
