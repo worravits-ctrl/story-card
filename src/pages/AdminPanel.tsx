@@ -13,6 +13,7 @@ import {
   type UserProfile,
   type CardDesign 
 } from '@/lib/supabase'
+import AdminCardEditor from '@/components/AdminCardEditor'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -60,6 +61,8 @@ export default function AdminPanel() {
   const [showEditModal, setShowEditModal] = useState(false)
   const [selectedUsers, setSelectedUsers] = useState<string[]>([])
   const [showBulkActions, setShowBulkActions] = useState(false)
+  const [editingCard, setEditingCard] = useState<CardDesign | null>(null)
+  const [showCardEditor, setShowCardEditor] = useState(false)
 
   useEffect(() => {
     if (!user) {
@@ -244,6 +247,19 @@ export default function AdminPanel() {
       console.error('Error deleting design:', error)
       toast.error('ไม่สามารถลบการ์ดได้')
     }
+  }
+
+  const handleEditCard = (card: CardDesign) => {
+    setEditingCard(card)
+    setShowCardEditor(true)
+  }
+
+  const handleSaveCard = (updatedCard: CardDesign) => {
+    setDesigns(prev => prev.map(d => 
+      d.id === updatedCard.id ? updatedCard : d
+    ))
+    setShowCardEditor(false)
+    setEditingCard(null)
   }
 
   const filteredUsers = users.filter(u =>
@@ -795,15 +811,26 @@ export default function AdminPanel() {
                     </div>
                   </div>
 
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    className="w-full mt-4"
-                    onClick={() => handleDeleteDesign(design.id)}
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    ลบการ์ด
-                  </Button>
+                  <div className="flex gap-2 mt-4">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => handleEditCard(design)}
+                    >
+                      <Edit className="w-4 h-4 mr-2" />
+                      แก้ไข
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="flex-1"
+                      onClick={() => handleDeleteDesign(design.id)}
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      ลบ
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -892,6 +919,19 @@ export default function AdminPanel() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Card Editor Modal */}
+      {editingCard && (
+        <AdminCardEditor
+          design={editingCard}
+          isOpen={showCardEditor}
+          onClose={() => {
+            setShowCardEditor(false)
+            setEditingCard(null)
+          }}
+          onSave={handleSaveCard}
+        />
+      )}
     </div>
   )
 }
