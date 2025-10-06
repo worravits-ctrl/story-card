@@ -27,7 +27,7 @@ import {
 } from 'lucide-react'
 import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
-import { updateCardDesign, type CardDesign, type TextElement, type ImageElement } from '@/lib/supabase'
+import { updateCardDesign, updateCardDesignAsAdmin, type CardDesign, type TextElement, type ImageElement } from '@/lib/supabase'
 
 interface AdminCardEditorProps {
   design: CardDesign
@@ -158,6 +158,16 @@ export default function AdminCardEditor({ design, isOpen, onClose, onSave }: Adm
 
     setSaving(true)
     try {
+      console.log('Saving card with data:', {
+        id: design.id,
+        name: cardName,
+        background_color: backgroundColor,
+        width: cardWidth,
+        height: cardHeight,
+        texts: texts.length,
+        images: images.length
+      })
+
       const updatedDesign: CardDesign = {
         ...design,
         name: cardName,
@@ -169,12 +179,22 @@ export default function AdminCardEditor({ design, isOpen, onClose, onSave }: Adm
         updated_at: new Date().toISOString()
       }
 
-      await updateCardDesign(design.id, updatedDesign)
+      console.log('Calling updateCardDesignAsAdmin with:', updatedDesign)
+      const result = await updateCardDesignAsAdmin(design.id, updatedDesign)
+      console.log('Admin update result:', result)
+      
       onSave(updatedDesign)
       toast.success('บันทึกการ์ดสำเร็จ!')
     } catch (error) {
       console.error('Error saving card:', error)
-      toast.error('ไม่สามารถบันทึกการ์ดได้')
+      
+      // แสดง error message ที่ละเอียดขึ้น
+      let errorMessage = 'ไม่สามารถบันทึกการ์ดได้'
+      if (error instanceof Error) {
+        errorMessage += `: ${error.message}`
+      }
+      
+      toast.error(errorMessage)
     } finally {
       setSaving(false)
     }

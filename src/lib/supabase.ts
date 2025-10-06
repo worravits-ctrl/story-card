@@ -405,6 +405,47 @@ export const updateCardDesign = async (id: string, updates: Partial<CardDesign>)
   return data
 }
 
+// Admin function to update any card design (bypasses RLS)
+export const updateCardDesignAsAdmin = async (id: string, updates: Partial<CardDesign>) => {
+  try {
+    console.log('Updating card design as admin:', { id, updates })
+    
+    // ลองใช้ RPC function ก่อน (ถ้ามี)
+    const { data: rpcData, error: rpcError } = await supabase
+      .rpc('update_card_design_for_admin', {
+        design_id: id,
+        updates: updates
+      })
+    
+    if (rpcError) {
+      console.log('RPC function not found, falling back to direct update:', rpcError)
+      
+      // ถ้า RPC ไม่มี ให้ใช้ direct update
+      const { data, error } = await supabase
+        .from('card_designs')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single()
+      
+      if (error) {
+        console.error('Direct update failed:', error)
+        throw error
+      }
+      
+      console.log('Direct update successful:', data)
+      return data
+    }
+    
+    console.log('Admin RPC update successful:', rpcData)
+    return rpcData
+    
+  } catch (error) {
+    console.error('Error in updateCardDesignAsAdmin:', error)
+    throw error
+  }
+}
+
 export const deleteCardDesign = async (id: string) => {
   const { error } = await supabase
     .from('card_designs')
