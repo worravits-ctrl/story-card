@@ -250,9 +250,14 @@ export default function AdminPanel() {
     u.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  const filteredDesigns = designs.filter(d =>
-    d.name.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredDesigns = designs.filter(d => {
+    const designOwner = users.find(u => u.id === d.user_id)
+    return (
+      d.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      designOwner?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      designOwner?.email?.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  })
 
   const stats = {
     totalUsers: users.length,
