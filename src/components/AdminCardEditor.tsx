@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Slider } from '@/components/ui/slider'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
@@ -18,8 +19,14 @@ import {
   RotateCcw,
   Plus,
   Trash2,
-  Settings
+  Settings,
+  Download,
+  Cloud,
+  HardDrive,
+  FileDown
 } from 'lucide-react'
+import html2canvas from 'html2canvas'
+import jsPDF from 'jspdf'
 import { updateCardDesign, type CardDesign, type TextElement, type ImageElement } from '@/lib/supabase'
 
 interface AdminCardEditorProps {
@@ -56,6 +63,8 @@ export default function AdminCardEditor({ design, isOpen, onClose, onSave }: Adm
   const [selectedElementType, setSelectedElementType] = useState<'text' | 'image' | null>(null)
   const [saving, setSaving] = useState(false)
   const [showColorPicker, setShowColorPicker] = useState(false)
+  const [showSaveDropdown, setShowSaveDropdown] = useState(false)
+  const [exporting, setExporting] = useState(false)
 
   const canvasRef = useRef<HTMLDivElement>(null)
 
@@ -182,6 +191,103 @@ export default function AdminCardEditor({ design, isOpen, onClose, onSave }: Adm
     setSelectedElementType(null)
   }
 
+  // Export functions
+  const handleExportImage = async () => {
+    if (!canvasRef.current) return
+
+    setExporting(true)
+    try {
+      const canvas = await html2canvas(canvasRef.current, {
+        backgroundColor: backgroundColor,
+        width: cardWidth,
+        height: cardHeight,
+        scale: 2, // Higher quality
+        useCORS: true,
+        allowTaint: true
+      })
+
+      // Download as PNG
+      const link = document.createElement('a')
+      link.download = `${cardName || 'card'}.png`
+      link.href = canvas.toDataURL('image/png')
+      link.click()
+
+      toast.success('ส่งออกรูปภาพสำเร็จ!')
+    } catch (error) {
+      console.error('Error exporting image:', error)
+      toast.error('ไม่สามารถส่งออกรูปภาพได้')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const handleExportPDF = async () => {
+    if (!canvasRef.current) return
+
+    setExporting(true)
+    try {
+      const canvas = await html2canvas(canvasRef.current, {
+        backgroundColor: backgroundColor,
+        width: cardWidth,
+        height: cardHeight,
+        scale: 2,
+        useCORS: true,
+        allowTaint: true
+      })
+
+      // A4 size in points (595.28 x 841.89)
+      const pdf = new jsPDF('portrait', 'pt', 'a4')
+      const pdfWidth = 595.28
+      const pdfHeight = 841.89
+      
+      // Calculate card dimensions to fit A4
+      const cardRatio = cardWidth / cardHeight
+      let displayWidth = pdfWidth - 80 // margin
+      let displayHeight = displayWidth / cardRatio
+      
+      if (displayHeight > pdfHeight - 80) {
+        displayHeight = pdfHeight - 80
+        displayWidth = displayHeight * cardRatio
+      }
+
+      const x = (pdfWidth - displayWidth) / 2
+      const y = (pdfHeight - displayHeight) / 2
+
+      pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', x, y, displayWidth, displayHeight)
+      pdf.save(`${cardName || 'card'}.pdf`)
+
+      toast.success('ส่งออก PDF สำเร็จ!')
+    } catch (error) {
+      console.error('Error exporting PDF:', error)
+      toast.error('ไม่สามารถส่งออก PDF ได้')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const handleExportJSON = () => {
+    const exportData = {
+      name: cardName,
+      background_color: backgroundColor,
+      width: cardWidth,
+      height: cardHeight,
+      texts,
+      images,
+      exported_at: new Date().toISOString()
+    }
+
+    const dataStr = JSON.stringify(exportData, null, 2)
+    const dataBlob = new Blob([dataStr], { type: 'application/json' })
+    
+    const link = document.createElement('a')
+    link.download = `${cardName || 'card'}.json`
+    link.href = URL.createObjectURL(dataBlob)
+    link.click()
+    
+    URL.revokeObjectURL(link.href)
+    toast.success('ส่งออกไฟล์ JSON สำเร็จ!')
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-7xl h-[90vh] p-0">
@@ -193,10 +299,82 @@ export default function AdminCardEditor({ design, isOpen, onClose, onSave }: Adm
                 <RotateCcw className="w-4 h-4 mr-2" />
                 รีเซ็ต
               </Button>
-              <Button size="sm" onClick={handleSave} disabled={saving}>
-                <Save className="w-4 h-4 mr-2" />
-                {saving ? 'กำลังบันทึก...' : 'บันทึก'}
-              </Button>
+              
+              {/* Save Dropdown */}
+              <Popover open={showSaveDropdown} onOpenChange={setShowSaveDropdown}>
+                <PopoverTrigger asChild>
+                  <Button size="sm" disabled={saving || exporting}>
+                    <Save className="w-4 h-4 mr-2" />
+                    {saving ? 'กำลังบันทึก...' : exporting ? 'กำลังส่งออก...' : 'บันทึก'}
+                    <svg className="w-3 h-3 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56 p-2">
+                  <div className="space-y-1">
+                    <div className="px-2 py-1.5 text-sm font-medium text-gray-900 border-b">
+                      บันทึกออนไลน์
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start"
+                      onClick={() => {
+                        handleSave()
+                        setShowSaveDropdown(false)
+                      }}
+                      disabled={saving}
+                    >
+                      <Cloud className="w-4 h-4 mr-2 text-blue-500" />
+                      บันทึกลงฐานข้อมูล
+                    </Button>
+                    
+                    <div className="px-2 py-1.5 text-sm font-medium text-gray-900 border-b border-t">
+                      ดาวน์โหลดไฟล์
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start"
+                      onClick={() => {
+                        handleExportImage()
+                        setShowSaveDropdown(false)
+                      }}
+                      disabled={exporting}
+                    >
+                      <FileDown className="w-4 h-4 mr-2 text-green-500" />
+                      บันทึกเป็นรูปภาพ (PNG)
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start"
+                      onClick={() => {
+                        handleExportPDF()
+                        setShowSaveDropdown(false)
+                      }}
+                      disabled={exporting}
+                    >
+                      <FileDown className="w-4 h-4 mr-2 text-red-500" />
+                      บันทึกเป็น PDF
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start"
+                      onClick={() => {
+                        handleExportJSON()
+                        setShowSaveDropdown(false)
+                      }}
+                    >
+                      <HardDrive className="w-4 h-4 mr-2 text-gray-500" />
+                      บันทึกเป็น JSON
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+              
               <Button variant="ghost" size="sm" onClick={onClose}>
                 <X className="w-4 h-4" />
               </Button>
@@ -487,7 +665,24 @@ export default function AdminCardEditor({ design, isOpen, onClose, onSave }: Adm
 
           {/* Canvas */}
           <div className="flex-1 p-8 bg-gray-100 overflow-auto">
-            <div className="flex justify-center">
+            <div className="flex flex-col items-center gap-4">
+              {(saving || exporting) && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm text-blue-800">
+                  {saving && (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                      กำลังบันทึกลงฐานข้อมูล...
+                    </div>
+                  )}
+                  {exporting && (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+                      กำลังส่งออกไฟล์...
+                    </div>
+                  )}
+                </div>
+              )}
+              
               <div 
                 ref={canvasRef}
                 className="relative border-2 border-gray-300 shadow-lg"
