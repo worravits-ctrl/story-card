@@ -250,6 +250,7 @@ export default function AdminPanel() {
   }
 
   const handleEditCard = (card: CardDesign) => {
+    console.log('AdminPanel handleEditCard called with card:', card)
     setEditingCard(card)
     setShowCardEditor(true)
   }

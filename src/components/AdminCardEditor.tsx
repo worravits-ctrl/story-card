@@ -53,48 +53,13 @@ const PRESET_COLORS = [
   '#2563eb', '#7c3aed', '#c026d3', '#be123c', '#7f1d1d', '#78350f',
 ]
 
-export default function AdminCardEditor({ design, isOpen, onClose, onSave }: AdminCardEditorProps) {
-  // ลองกู้คืน state จาก localStorage ก่อน
-  const getInitialState = () => {
-    try {
-      const saved = localStorage.getItem(`adminCardEditor_${design.id}`)
-      if (saved) {
-        const cardState = JSON.parse(saved)
-        // ตรวจสอบว่าข้อมูลไม่เก่าเกิน 1 ชั่วโมง
-        if (Date.now() - cardState.timestamp < 3600000) {
-          return {
-            name: cardState.name || design.name || '',
-            backgroundColor: cardState.backgroundColor || design.background_color || '#ffffff',
-            texts: cardState.texts || design.texts || [],
-            images: cardState.images || design.images || [],
-            width: cardState.width || design.width || 400,
-            height: cardState.height || design.height || 250
-          }
-        }
-      }
-    } catch (e) {
-      console.log('Cannot restore card state:', e)
-    }
-    
-    // ถ้ากู้คืนไม่ได้ ใช้ข้อมูลจาก design
-    return {
-      name: design.name || '',
-      backgroundColor: design.background_color || '#ffffff',
-      texts: design.texts || [],
-      images: design.images || [],
-      width: design.width || 400,
-      height: design.height || 250
-    }
-  }
-
-  const initialState = getInitialState()
-  
-  const [cardName, setCardName] = useState(initialState.name)
-  const [backgroundColor, setBackgroundColor] = useState(initialState.backgroundColor)
-  const [texts, setTexts] = useState<TextElement[]>(initialState.texts)
-  const [images, setImages] = useState<ImageElement[]>(initialState.images)
-  const [cardWidth, setCardWidth] = useState(initialState.width)
-  const [cardHeight, setCardHeight] = useState(initialState.height)
+export default function AdminCardEditor({ design, isOpen, onClose, onSave }: AdminCardEditorProps) {  
+  const [cardName, setCardName] = useState('')
+  const [backgroundColor, setBackgroundColor] = useState('#ffffff')
+  const [texts, setTexts] = useState<TextElement[]>([])
+  const [images, setImages] = useState<ImageElement[]>([])
+  const [cardWidth, setCardWidth] = useState(400)
+  const [cardHeight, setCardHeight] = useState(250)
   const [selectedElement, setSelectedElement] = useState<string | null>(null)
   const [selectedElementType, setSelectedElementType] = useState<'text' | 'image' | null>(null)
   const [saving, setSaving] = useState(false)
@@ -107,27 +72,69 @@ export default function AdminCardEditor({ design, isOpen, onClose, onSave }: Adm
 
   // Reset form when design changes
   useEffect(() => {
-    setCardName(design.name || '')
-    setBackgroundColor(design.background_color || '#ffffff')
-    setTexts(design.texts || [])
-    setImages(design.images || [])
-    setCardWidth(design.width || 400)
-    setCardHeight(design.height || 250)
-    setSelectedElement(null)
-    setSelectedElementType(null)
-    
-    // บันทึก state ลงใน localStorage เพื่อป้องกันการสูญหาย
-    const cardState = {
-      designId: design.id,
-      name: design.name,
-      backgroundColor: design.background_color,
-      width: design.width,
-      height: design.height,
-      texts: design.texts,
-      images: design.images,
-      timestamp: Date.now()
+    console.log('AdminCardEditor useEffect triggered, design:', design)
+    // ตรวจสอบว่า design มีข้อมูลจริงๆ ไม่ใช่ว่างเปล่า
+    if (design && design.id) {
+      console.log('Design has id:', design.id, 'texts:', design.texts, 'images:', design.images)
+      // ลองกู้คืนจาก localStorage ก่อน ถ้าไม่มีค่อยใช้ของ design
+      try {
+        const saved = localStorage.getItem(`adminCardEditor_${design.id}`)
+        if (saved) {
+          const cardState = JSON.parse(saved)
+          // ตรวจสอบว่าข้อมูลไม่เก่าเกิน 1 ชั่วโมงและมาจาก design เดียวกัน
+          if (Date.now() - cardState.timestamp < 3600000 && cardState.designId === design.id) {
+            // ใช้ข้อมูลจาก localStorage
+            setCardName(cardState.name || '')
+            setBackgroundColor(cardState.backgroundColor || '#ffffff')
+            setTexts(cardState.texts || [])
+            setImages(cardState.images || [])
+            setCardWidth(cardState.width || 400)
+            setCardHeight(cardState.height || 250)
+          } else {
+            // ข้อมูลใน localStorage เก่าไปแล้วหรือไม่ตรง ใช้ design แทน
+            setCardName(design.name || '')
+            setBackgroundColor(design.background_color || '#ffffff')
+            setTexts(design.texts || [])
+            setImages(design.images || [])
+            setCardWidth(design.width || 400)
+            setCardHeight(design.height || 250)
+          }
+        } else {
+          // ไม่มีใน localStorage ใช้ design
+          setCardName(design.name || '')
+          setBackgroundColor(design.background_color || '#ffffff')
+          setTexts(design.texts || [])
+          setImages(design.images || [])
+          setCardWidth(design.width || 400)
+          setCardHeight(design.height || 250)
+        }
+      } catch (e) {
+        // error กู้คืนจาก localStorage ใช้ design แทน
+        console.log('Using design data:', design)
+        setCardName(design.name || '')
+        setBackgroundColor(design.background_color || '#ffffff')
+        setTexts(design.texts || [])
+        setImages(design.images || [])
+        setCardWidth(design.width || 400)
+        setCardHeight(design.height || 250)
+      }
+      
+      setSelectedElement(null)
+      setSelectedElementType(null)
+      
+      // บันทึก state ปัจจุบันลงใน localStorage
+      const cardState = {
+        designId: design.id,
+        name: design.name,
+        backgroundColor: design.background_color,
+        width: design.width,
+        height: design.height,
+        texts: design.texts,
+        images: design.images,
+        timestamp: Date.now()
+      }
+      localStorage.setItem(`adminCardEditor_${design.id}`, JSON.stringify(cardState))
     }
-    localStorage.setItem(`adminCardEditor_${design.id}`, JSON.stringify(cardState))
   }, [design])
 
   const addTextElement = () => {

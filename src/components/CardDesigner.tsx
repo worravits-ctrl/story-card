@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,6 +45,7 @@ import {
   updateCardDesign, 
   getUserCardDesigns, 
   deleteCardDesign,
+  getCardDesignById,
   type CardDesign as DBCardDesign 
 } from '@/lib/supabase';
 
@@ -106,6 +107,7 @@ const FONT_FAMILIES = [
 export function CardDesigner() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [saveMode, setSaveMode] = useState<'online' | 'offline'>('online');
   
@@ -173,6 +175,54 @@ export function CardDesigner() {
   useEffect(() => {
     loadAllDesigns();
   }, [user]);
+
+  // Load design from URL parameter
+  useEffect(() => {
+    const loadDesignFromUrl = async () => {
+      const searchParams = new URLSearchParams(location.search);
+      const designId = searchParams.get('design');
+      
+      if (designId && user) {
+        console.log('Loading design from URL parameter:', designId);
+        try {
+          const design = await getCardDesignById(designId);
+          if (design) {
+            console.log('Design loaded from database:', design);
+            
+            // Convert DB format to component format
+            const convertedDesign: CardDesign = {
+              id: design.id,
+              name: design.name,
+              width: design.width,
+              height: design.height,
+              backgroundColor: design.background_color,
+              texts: design.texts?.map((text: any) => ({
+                ...text,
+                fontSize: text.font_size || text.fontSize,
+                fontFamily: text.font_family || text.fontFamily,
+                fontWeight: text.font_weight || text.fontWeight,
+                fontStyle: text.font_style || text.fontStyle
+              })) || [],
+              images: design.images || [],
+              createdAt: new Date(design.created_at)
+            };
+            
+            setCurrentDesign(convertedDesign);
+            toast.success(`โหลดการ์ด "${design.name}" สำเร็จ`);
+          } else {
+            toast.error('ไม่พบการ์ดที่ต้องการแก้ไข');
+          }
+        } catch (error) {
+          console.error('Error loading design:', error);
+          toast.error('ไม่สามารถโหลดการ์ดได้');
+        }
+      }
+    };
+
+    if (user) {
+      loadDesignFromUrl();
+    }
+  }, [location.search, user]);
 
   const loadAllDesigns = async () => {
     // Load offline designs

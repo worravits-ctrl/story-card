@@ -493,6 +493,33 @@ export const getAllUsers = async (): Promise<User[]> => {
   }
 }
 
+export const getCardDesignById = async (designId: string): Promise<CardDesign | null> => {
+  try {
+    console.log('Fetching card design by ID:', designId)
+    
+    const { data, error } = await supabase
+      .from('card_designs')
+      .select('*')
+      .eq('id', designId)
+      .single()
+    
+    if (error) {
+      if (error.code === 'PGRST116') {
+        console.log('Design not found')
+        return null
+      }
+      console.error('Error fetching design:', error)
+      throw error
+    }
+    
+    console.log('Design fetched successfully:', data)
+    return data
+  } catch (error) {
+    console.error('Error in getCardDesignById:', error)
+    throw error
+  }
+}
+
 export const getAllCardDesigns = async () => {
   try {
     console.log('Fetching card designs for admin...')
