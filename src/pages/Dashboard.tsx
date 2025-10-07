@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContextSupabase'
 import { getUserCardDesigns, deleteCardDesign, clearAuthData, refreshSession, fastLogout, instantRefresh, checkCurrentUserRole } from '@/lib/supabase'
 import type { CardDesign } from '@/lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import CardPreview from '@/components/CardPreview'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { 
@@ -287,31 +288,13 @@ export default function Dashboard() {
                 <Card key={design.id} className="group hover:shadow-lg transition-shadow">
                   <CardContent className="p-4">
                     {/* Preview */}
-                    <div 
-                      className="h-40 rounded-lg mb-4 border-2 border-gray-200 flex items-center justify-center text-xs text-gray-500 relative overflow-hidden"
-                      style={{ backgroundColor: design.background_color }}
-                    >
-                      {/* Simulate card preview */}
-                      <div className="absolute inset-2 flex flex-col justify-center items-center">
-                        {design.texts.slice(0, 2).map((text, i) => (
-                          <div 
-                            key={i}
-                            className="text-xs truncate mb-1"
-                            style={{ 
-                              color: text.color,
-                              fontSize: '8px',
-                              fontWeight: text.font_weight 
-                            }}
-                          >
-                            {text.content}
-                          </div>
-                        ))}
-                        {design.images.length > 0 && (
-                          <div className="w-8 h-6 bg-gray-300 rounded text-xs flex items-center justify-center">
-                            IMG
-                          </div>
-                        )}
-                      </div>
+                    <div className="h-40 mb-4 flex items-center justify-center">
+                      <CardPreview 
+                        design={design} 
+                        maxWidth={180}
+                        maxHeight={150}
+                        className="shadow-sm"
+                      />
                     </div>
 
                     {/* Info */}

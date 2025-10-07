@@ -14,6 +14,7 @@ import {
   type CardDesign 
 } from '@/lib/supabase'
 import AdminCardEditor from '@/components/AdminCardEditor'
+import CardPreview from '@/components/CardPreview'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -757,30 +758,13 @@ export default function AdminPanel() {
             {filteredDesigns.map((design) => (
               <Card key={design.id}>
                 <CardContent className="p-4">
-                  <div 
-                    className="h-32 rounded-lg mb-4 border-2 border-gray-200 flex items-center justify-center relative overflow-hidden"
-                    style={{ backgroundColor: design.background_color }}
-                  >
-                    <div className="absolute inset-2 flex flex-col justify-center items-center">
-                      {design.texts.slice(0, 2).map((text, i) => (
-                        <div 
-                          key={i}
-                          className="text-xs truncate mb-1"
-                          style={{ 
-                            color: text.color,
-                            fontSize: '8px',
-                            fontWeight: text.font_weight 
-                          }}
-                        >
-                          {text.content}
-                        </div>
-                      ))}
-                      {design.images.length > 0 && (
-                        <div className="w-8 h-6 bg-gray-300 rounded text-xs flex items-center justify-center">
-                          IMG
-                        </div>
-                      )}
-                    </div>
+                  <div className="h-32 mb-4 flex items-center justify-center">
+                    <CardPreview 
+                      design={design} 
+                      maxWidth={160}
+                      maxHeight={120}
+                      className="shadow-sm"
+                    />
                   </div>
 
                   <div className="space-y-2">
