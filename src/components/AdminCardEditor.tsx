@@ -23,7 +23,8 @@ import {
   Download,
   Cloud,
   HardDrive,
-  FileDown
+  FileDown,
+  Printer
 } from 'lucide-react'
 import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
@@ -65,6 +66,7 @@ export default function AdminCardEditor({ design, isOpen, onClose, onSave }: Adm
   const [showColorPicker, setShowColorPicker] = useState(false)
   const [showSaveDropdown, setShowSaveDropdown] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [printing, setPrinting] = useState(false)
 
   const canvasRef = useRef<HTMLDivElement>(null)
 
@@ -308,6 +310,141 @@ export default function AdminCardEditor({ design, isOpen, onClose, onSave }: Adm
     toast.success('ส่งออกไฟล์ JSON สำเร็จ!')
   }
 
+  const handlePrint = () => {
+    if (!canvasRef.current) return
+
+    setPrinting(true)
+    const printWindow = window.open('', '_blank')
+    if (!printWindow) {
+      setPrinting(false)
+      return
+    }
+
+    // สร้างการ์ดสำหรับพิมพ์ 10 ใบใน A4
+    const generateCards = () => {
+      let cardsHTML = ''
+      for (let i = 0; i < 10; i++) {
+        cardsHTML += `
+          <div class="card" style="
+            width: ${cardWidth * 0.75}px; 
+            height: ${cardHeight * 0.75}px; 
+            background-color: ${backgroundColor};
+            position: relative;
+            border: 1px solid #ccc;
+            margin: 2mm;
+            page-break-inside: avoid;
+          ">
+            ${texts.map(text => `
+              <div style="
+                position: absolute;
+                left: ${text.x * 0.75}px;
+                top: ${text.y * 0.75}px;
+                color: ${text.color};
+                font-size: ${text.font_size * 0.75}px;
+                font-weight: ${text.font_weight};
+                font-family: ${text.font_family};
+                font-style: ${text.font_style};
+                white-space: pre-wrap;
+              ">${text.content}</div>
+            `).join('')}
+            ${images.map(image => `
+              <img src="${image.src}" style="
+                position: absolute;
+                left: ${image.x * 0.75}px;
+                top: ${image.y * 0.75}px;
+                width: ${image.width * 0.75}px;
+                height: ${image.height * 0.75}px;
+                opacity: ${image.opacity};
+                object-fit: cover;
+              " />
+            `).join('')}
+          </div>
+        `
+      }
+      return cardsHTML
+    }
+
+    // สร้าง HTML สำหรับพิมพ์
+    const printHTML = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <title>พิมพ์การ์ด A4 - ${cardName}</title>
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body {
+              font-family: 'Sarabun', Arial, sans-serif;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+              background: white;
+            }
+            
+            .print-container {
+              width: 210mm;
+              height: 297mm;
+              margin: 0 auto;
+              padding: 5mm;
+              display: flex;
+              flex-wrap: wrap;
+              justify-content: space-between;
+              align-content: flex-start;
+            }
+
+            /* สำหรับพิมพ์จริง - เต็มหน้าเดียว */
+            @media print {
+              @page {
+                size: A4;
+                margin: 0;
+              }
+              body { margin: 0; padding: 0; }
+              .print-container {
+                width: 210mm;
+                height: 297mm;
+                margin: 0;
+                padding: 5mm;
+                page-break-inside: avoid;
+              }
+              .card {
+                page-break-inside: avoid;
+              }
+            }
+
+            @media screen {
+              .print-container {
+                border: 1px solid #ccc;
+                background: white;
+                box-shadow: 0 0 10px rgba(0,0,0,0.1);
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="print-container">
+            ${generateCards()}
+          </div>
+          <script>
+            window.onload = function() {
+              setTimeout(() => {
+                window.print();
+              }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `
+
+    printWindow.document.write(printHTML)
+    printWindow.document.close()
+    
+    // ตั้งเวลาให้ printing state กลับเป็น false หลังจากเปิดหน้าพิมพ์
+    setTimeout(() => {
+      setPrinting(false)
+    }, 2000)
+    
+    toast.success('เปิดหน้าพิมพ์ในแท็บใหม่แล้ว - การ์ดยังคงแสดงอยู่เพื่อแก้ไขต่อ!')
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-7xl h-[90vh] p-0">
@@ -323,9 +460,9 @@ export default function AdminCardEditor({ design, isOpen, onClose, onSave }: Adm
               {/* Save Dropdown */}
               <Popover open={showSaveDropdown} onOpenChange={setShowSaveDropdown}>
                 <PopoverTrigger asChild>
-                  <Button size="sm" disabled={saving || exporting}>
+                  <Button size="sm" disabled={saving || exporting || printing}>
                     <Save className="w-4 h-4 mr-2" />
-                    {saving ? 'กำลังบันทึก...' : exporting ? 'กำลังส่งออก...' : 'บันทึก'}
+                    {saving ? 'กำลังบันทึก...' : exporting ? 'กำลังส่งออก...' : printing ? 'กำลังพิมพ์...' : 'บันทึก'}
                     <svg className="w-3 h-3 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
@@ -390,6 +527,23 @@ export default function AdminCardEditor({ design, isOpen, onClose, onSave }: Adm
                     >
                       <HardDrive className="w-4 h-4 mr-2 text-gray-500" />
                       บันทึกเป็น JSON
+                    </Button>
+                    
+                    <div className="px-2 py-1.5 text-sm font-medium text-gray-900 border-t">
+                      พิมพ์การ์ด
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start"
+                      onClick={() => {
+                        handlePrint()
+                        // ไม่ปิด dropdown ทันที ให้ผู้ใช้เห็นว่าพิมพ์สำเร็จ
+                        setTimeout(() => setShowSaveDropdown(false), 1000)
+                      }}
+                    >
+                      <Printer className="w-4 h-4 mr-2 text-purple-500" />
+                      พิมพ์การ์ด (10 ใบ/A4)
                     </Button>
                   </div>
                 </PopoverContent>
@@ -686,7 +840,7 @@ export default function AdminCardEditor({ design, isOpen, onClose, onSave }: Adm
           {/* Canvas */}
           <div className="flex-1 p-8 bg-gray-100 overflow-auto">
             <div className="flex flex-col items-center gap-4">
-              {(saving || exporting) && (
+              {(saving || exporting || printing) && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm text-blue-800">
                   {saving && (
                     <div className="flex items-center gap-2">
@@ -698,6 +852,12 @@ export default function AdminCardEditor({ design, isOpen, onClose, onSave }: Adm
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin"></div>
                       กำลังส่งออกไฟล์...
+                    </div>
+                  )}
+                  {printing && (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                      กำลังเตรียมหน้าพิมพ์...
                     </div>
                   )}
                 </div>
