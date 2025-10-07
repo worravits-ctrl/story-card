@@ -314,11 +314,27 @@ export default function AdminCardEditor({ design, isOpen, onClose, onSave }: Adm
     if (!canvasRef.current) return
 
     setPrinting(true)
-    const printWindow = window.open('', '_blank')
-    if (!printWindow) {
+    
+    // เปิดแท็บใหม่สำหรับพิมพ์โดยไม่กระทบหน้าปัจจุบัน
+    const printWindow = window.open('about:blank', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes')
+    if (!printWindow || printWindow.closed) {
       setPrinting(false)
+      toast.error('❌ ไม่สามารถเปิดแท็บพิมพ์ได้ กรุณาอนุญาต popup ในเบราว์เซอร์', {
+        duration: 5000,
+      })
       return
     }
+
+    // ตั้งชื่อแท็บใหม่
+    printWindow.document.title = `พิมพ์การ์ด - ${cardName}`
+    
+    // ให้ focus ที่แท็บใหม่ชั่วคราว แต่ไม่ปิดแท็บเดิม
+    printWindow.focus()
+    
+    // หลังจาก 3 วินาที ให้ focus กลับมาที่แท็บเดิม
+    setTimeout(() => {
+      window.focus()
+    }, 3000)
 
     // สร้างการ์ดสำหรับพิมพ์ 10 ใบใน A4
     const generateCards = () => {
@@ -370,7 +386,8 @@ export default function AdminCardEditor({ design, isOpen, onClose, onSave }: Adm
       <html>
         <head>
           <meta charset="utf-8">
-          <title>พิมพ์การ์ด A4 - ${cardName}</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>🖨️ พิมพ์การ์ด - ${cardName} (10 ใบ/A4)</title>
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body {
@@ -425,24 +442,51 @@ export default function AdminCardEditor({ design, isOpen, onClose, onSave }: Adm
           </div>
           <script>
             window.onload = function() {
+              // รอให้เนื้อหาโหลดเสร็จ
               setTimeout(() => {
+                // เรียก dialog พิมพ์
                 window.print();
-              }, 500);
+                
+                // ตั้งเวลาปิดแท็บหลังจากพิมพ์ (หรือยกเลิก)
+                setTimeout(() => {
+                  try {
+                    window.close();
+                  } catch (e) {
+                    // ถ้าไม่สามารถปิดได้ ให้แสดงข้อความ
+                    document.body.innerHTML = '<div style="text-align:center;padding:50px;font-family:Arial;">✅ การพิมพ์เสร็จสิ้น<br><small>คุณสามารถปิดแท็บนี้ได้แล้ว</small></div>';
+                  }
+                }, 1000);
+              }, 800);
+              
+              // จัดการเหตุการณ์หลังจากพิมพ์หรือยกเลิก
+              window.addEventListener('afterprint', function() {
+                setTimeout(() => {
+                  try {
+                    window.close();
+                  } catch (e) {
+                    document.body.innerHTML = '<div style="text-align:center;padding:50px;font-family:Arial;">✅ การพิมพ์เสร็จสิ้น<br><small>คุณสามารถปิดแท็บนี้ได้แล้ว</small></div>';
+                  }
+                }, 500);
+              });
             };
           </script>
         </body>
       </html>
     `
 
+    // เขียน HTML ไปยังแท็บใหม่
     printWindow.document.write(printHTML)
     printWindow.document.close()
     
-    // ตั้งเวลาให้ printing state กลับเป็น false หลังจากเปิดหน้าพิมพ์
+    // ตั้งเวลาให้ printing state กลับเป็น false
     setTimeout(() => {
       setPrinting(false)
-    }, 2000)
+    }, 1500)
     
-    toast.success('เปิดหน้าพิมพ์ในแท็บใหม่แล้ว - การ์ดยังคงแสดงอยู่เพื่อแก้ไขต่อ!')
+    // แสดงข้อความยืนยันว่าการ์ดยังคงแสดงอยู่
+    toast.success('🖨️ เปิดแท็บพิมพ์ใหม่แล้ว! การ์ดยังคงอยู่ที่นี่เพื่อแก้ไขต่อ', {
+      duration: 4000,
+    })
   }
 
   return (
@@ -857,7 +901,7 @@ export default function AdminCardEditor({ design, isOpen, onClose, onSave }: Adm
                   {printing && (
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-                      กำลังเตรียมหน้าพิมพ์...
+                      เปิดแท็บพิมพ์ใหม่... การ์ดยังคงอยู่ที่นี่
                     </div>
                   )}
                 </div>
