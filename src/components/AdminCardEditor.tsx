@@ -54,12 +54,47 @@ const PRESET_COLORS = [
 ]
 
 export default function AdminCardEditor({ design, isOpen, onClose, onSave }: AdminCardEditorProps) {
-  const [cardName, setCardName] = useState(design.name || '')
-  const [backgroundColor, setBackgroundColor] = useState(design.background_color || '#ffffff')
-  const [texts, setTexts] = useState<TextElement[]>(design.texts || [])
-  const [images, setImages] = useState<ImageElement[]>(design.images || [])
-  const [cardWidth, setCardWidth] = useState(design.width || 400)
-  const [cardHeight, setCardHeight] = useState(design.height || 250)
+  // ลองกู้คืน state จาก localStorage ก่อน
+  const getInitialState = () => {
+    try {
+      const saved = localStorage.getItem(`adminCardEditor_${design.id}`)
+      if (saved) {
+        const cardState = JSON.parse(saved)
+        // ตรวจสอบว่าข้อมูลไม่เก่าเกิน 1 ชั่วโมง
+        if (Date.now() - cardState.timestamp < 3600000) {
+          return {
+            name: cardState.name || design.name || '',
+            backgroundColor: cardState.backgroundColor || design.background_color || '#ffffff',
+            texts: cardState.texts || design.texts || [],
+            images: cardState.images || design.images || [],
+            width: cardState.width || design.width || 400,
+            height: cardState.height || design.height || 250
+          }
+        }
+      }
+    } catch (e) {
+      console.log('Cannot restore card state:', e)
+    }
+    
+    // ถ้ากู้คืนไม่ได้ ใช้ข้อมูลจาก design
+    return {
+      name: design.name || '',
+      backgroundColor: design.background_color || '#ffffff',
+      texts: design.texts || [],
+      images: design.images || [],
+      width: design.width || 400,
+      height: design.height || 250
+    }
+  }
+
+  const initialState = getInitialState()
+  
+  const [cardName, setCardName] = useState(initialState.name)
+  const [backgroundColor, setBackgroundColor] = useState(initialState.backgroundColor)
+  const [texts, setTexts] = useState<TextElement[]>(initialState.texts)
+  const [images, setImages] = useState<ImageElement[]>(initialState.images)
+  const [cardWidth, setCardWidth] = useState(initialState.width)
+  const [cardHeight, setCardHeight] = useState(initialState.height)
   const [selectedElement, setSelectedElement] = useState<string | null>(null)
   const [selectedElementType, setSelectedElementType] = useState<'text' | 'image' | null>(null)
   const [saving, setSaving] = useState(false)
@@ -80,6 +115,19 @@ export default function AdminCardEditor({ design, isOpen, onClose, onSave }: Adm
     setCardHeight(design.height || 250)
     setSelectedElement(null)
     setSelectedElementType(null)
+    
+    // บันทึก state ลงใน localStorage เพื่อป้องกันการสูญหาย
+    const cardState = {
+      designId: design.id,
+      name: design.name,
+      backgroundColor: design.background_color,
+      width: design.width,
+      height: design.height,
+      texts: design.texts,
+      images: design.images,
+      timestamp: Date.now()
+    }
+    localStorage.setItem(`adminCardEditor_${design.id}`, JSON.stringify(cardState))
   }, [design])
 
   const addTextElement = () => {
@@ -315,8 +363,12 @@ export default function AdminCardEditor({ design, isOpen, onClose, onSave }: Adm
 
     setPrinting(true)
     
+    // สร้าง unique window name เพื่อป้องกันการทับซ้อน
+    const windowName = `printCard_${Date.now()}`
+    
     // เปิดแท็บใหม่สำหรับพิมพ์โดยไม่กระทบหน้าปัจจุบัน
-    const printWindow = window.open('about:blank', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes')
+    const printWindow = window.open('about:blank', windowName, 'width=800,height=600,scrollbars=yes,resizable=yes,location=no,menubar=no,toolbar=no')
+    
     if (!printWindow || printWindow.closed) {
       setPrinting(false)
       toast.error('❌ ไม่สามารถเปิดแท็บพิมพ์ได้ กรุณาอนุญาต popup ในเบราว์เซอร์', {
@@ -325,16 +377,25 @@ export default function AdminCardEditor({ design, isOpen, onClose, onSave }: Adm
       return
     }
 
-    // ตั้งชื่อแท็บใหม่
-    printWindow.document.title = `พิมพ์การ์ด - ${cardName}`
-    
-    // ให้ focus ที่แท็บใหม่ชั่วคราว แต่ไม่ปิดแท็บเดิม
-    printWindow.focus()
-    
-    // หลังจาก 3 วินาที ให้ focus กลับมาที่แท็บเดิม
-    setTimeout(() => {
-      window.focus()
-    }, 3000)
+    // ป้องกันการ focus ที่อาจกระทบต่อแท็บเดิม
+    try {
+      printWindow.focus()
+      
+      // บันทึกแท็บเดิม reference
+      const originalWindow = window
+      
+      // หลังจาก 5 วินาที ให้ focus กลับมาที่แท็บเดิม (ถ้าแท็บพิมพ์ยังเปิดอยู่)
+      setTimeout(() => {
+        try {
+          originalWindow.focus()
+        } catch (e) {
+          // ถ้า focus ไม่ได้ก็ไม่เป็นไร
+        }
+      }, 5000)
+    } catch (e) {
+      // ถ้า focus ไม่ได้ ก็ไม่เป็นไร
+      console.log('Cannot focus print window:', e)
+    }
 
     // สร้างการ์ดสำหรับพิมพ์ 10 ใบใน A4
     const generateCards = () => {
@@ -441,32 +502,96 @@ export default function AdminCardEditor({ design, isOpen, onClose, onSave }: Adm
             ${generateCards()}
           </div>
           <script>
+            // ป้องกันการ navigation กลับไปหน้าเดิม
+            window.addEventListener('beforeunload', function(e) {
+              e.preventDefault();
+              return null;
+            });
+            
+            // ป้องกัน back button
+            history.pushState(null, '', location.href);
+            window.addEventListener('popstate', function() {
+              history.pushState(null, '', location.href);
+            });
+            
             window.onload = function() {
+              // ตั้งชื่อหน้าต่าง
+              document.title = 'พิมพ์การ์ด - กำลังเตรียมข้อมูล...';
+              
               // รอให้เนื้อหาโหลดเสร็จ
               setTimeout(() => {
+                document.title = 'พิมพ์การ์ด - กำลังพิมพ์...';
+                
                 // เรียก dialog พิมพ์
                 window.print();
                 
-                // ตั้งเวลาปิดแท็บหลังจากพิมพ์ (หรือยกเลิก)
+                // หลังพิมพ์เสร็จ ไม่ปิดแท็บทันที
                 setTimeout(() => {
-                  try {
-                    window.close();
-                  } catch (e) {
-                    // ถ้าไม่สามารถปิดได้ ให้แสดงข้อความ
-                    document.body.innerHTML = '<div style="text-align:center;padding:50px;font-family:Arial;">✅ การพิมพ์เสร็จสิ้น<br><small>คุณสามารถปิดแท็บนี้ได้แล้ว</small></div>';
-                  }
-                }, 1000);
-              }, 800);
+                  document.title = 'การพิมพ์เสร็จสิ้น';
+                  document.body.innerHTML = \`
+                    <div style="
+                      text-align:center;
+                      padding:50px;
+                      font-family:Arial;
+                      background:#f0f9ff;
+                      min-height:100vh;
+                      display:flex;
+                      align-items:center;
+                      justify-content:center;
+                      flex-direction:column;
+                    ">
+                      <h1 style="color:#0369a1;margin-bottom:20px;">✅ การพิมพ์เสร็จสิ้น</h1>
+                      <p style="color:#0f766e;margin-bottom:30px;">การ์ดของคุณยังคงแสดงอยู่ในแท็บเดิม</p>
+                      <button onclick="window.close()" style="
+                        background:#dc2626;
+                        color:white;
+                        border:none;
+                        padding:10px 20px;
+                        border-radius:5px;
+                        cursor:pointer;
+                        font-size:16px;
+                      ">ปิดแท็บนี้</button>
+                    </div>
+                  \`;
+                }, 2000);
+              }, 1000);
               
               // จัดการเหตุการณ์หลังจากพิมพ์หรือยกเลิก
               window.addEventListener('afterprint', function() {
+                document.title = 'การพิมพ์เสร็จสิ้น';
                 setTimeout(() => {
-                  try {
-                    window.close();
-                  } catch (e) {
-                    document.body.innerHTML = '<div style="text-align:center;padding:50px;font-family:Arial;">✅ การพิมพ์เสร็จสิ้น<br><small>คุณสามารถปิดแท็บนี้ได้แล้ว</small></div>';
-                  }
+                  document.body.innerHTML = \`
+                    <div style="
+                      text-align:center;
+                      padding:50px;
+                      font-family:Arial;
+                      background:#f0f9ff;
+                      min-height:100vh;
+                      display:flex;
+                      align-items:center;
+                      justify-content:center;
+                      flex-direction:column;
+                    ">
+                      <h1 style="color:#0369a1;margin-bottom:20px;">✅ การพิมพ์เสร็จสิ้น</h1>
+                      <p style="color:#0f766e;margin-bottom:10px;">การ์ดของคุณยังคงแสดงอยู่ในแท็บเดิม</p>
+                      <p style="color:#374151;margin-bottom:30px;font-size:14px;">คุณสามารถกลับไปแก้ไขการ์ดต่อได้</p>
+                      <button onclick="window.close()" style="
+                        background:#dc2626;
+                        color:white;
+                        border:none;
+                        padding:10px 20px;
+                        border-radius:5px;
+                        cursor:pointer;
+                        font-size:16px;
+                      ">ปิดแท็บนี้</button>
+                    </div>
+                  \`;
                 }, 500);
+              });
+              
+              // จัดการเหตุการณ์ยกเลิกการพิมพ์
+              window.addEventListener('beforeprint', function() {
+                document.title = 'กำลังพิมพ์การ์ด...';
               });
             };
           </script>
@@ -489,8 +614,19 @@ export default function AdminCardEditor({ design, isOpen, onClose, onSave }: Adm
     })
   }
 
+  // ป้องกันการปิด modal ขณะพิมพ์
+  const handleClose = () => {
+    if (printing) {
+      toast.info('รอสักครู่ กำลังเตรียมการพิมพ์...', {
+        duration: 2000
+      })
+      return
+    }
+    onClose()
+  }
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-7xl h-[90vh] p-0">
         <DialogHeader className="px-6 py-4 border-b">
           <DialogTitle className="flex items-center justify-between">
@@ -593,7 +729,7 @@ export default function AdminCardEditor({ design, isOpen, onClose, onSave }: Adm
                 </PopoverContent>
               </Popover>
               
-              <Button variant="ghost" size="sm" onClick={onClose}>
+              <Button variant="ghost" size="sm" onClick={handleClose} disabled={printing}>
                 <X className="w-4 h-4" />
               </Button>
             </div>
