@@ -141,9 +141,11 @@ export function CardDesigner() {
   const [initialSize, setInitialSize] = useState({ width: 0, height: 0 });
   const [initialMousePos, setInitialMousePos] = useState({ x: 0, y: 0 });
   
-  // A4 layout settings - Fixed 10 cards, 2 cols x 5 rows
+  // A4 layout settings - Configurable rows and columns
   const [a4Settings, setA4Settings] = useState({
-    cardCount: 10,
+    rows: 5,
+    columns: 2,
+    cardCount: 10,  // rows * columns
     rowGap: 15,
     columnGap: 15,
     marginTop: 30,
@@ -156,6 +158,40 @@ export function CardDesigner() {
   const canvasRef = useRef<HTMLDivElement>(null);
   const a4CanvasRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-update cardCount when rows or columns change
+  useEffect(() => {
+    setA4Settings(prev => ({
+      ...prev,
+      cardCount: prev.rows * prev.columns
+    }));
+  }, [a4Settings.rows, a4Settings.columns]);
+
+  // Load A4 settings from localStorage on mount
+  useEffect(() => {
+    try {
+      const savedA4Settings = localStorage.getItem('cardDesigner_a4Settings');
+      if (savedA4Settings) {
+        const parsed = JSON.parse(savedA4Settings);
+        setA4Settings(prev => ({
+          ...prev,
+          ...parsed,
+          cardCount: parsed.rows * parsed.columns // Ensure cardCount is updated
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to load A4 settings:', error);
+    }
+  }, []);
+
+  // Save A4 settings to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem('cardDesigner_a4Settings', JSON.stringify(a4Settings));
+    } catch (error) {
+      console.error('Failed to save A4 settings:', error);
+    }
+  }, [a4Settings]);
 
   // Online/offline detection
   useEffect(() => {
@@ -809,7 +845,7 @@ export function CardDesigner() {
         'FAST'
       );
       
-      pdf.save(`${currentDesign.name}_A4_Layout_10Cards.pdf`);
+      pdf.save(`${currentDesign.name}_A4_Layout_${a4Settings.cardCount}Cards.pdf`);
       
       toast.success('ส่งออก A4 PDF (10 ภาพ) สำเร็จ!');
     } catch (error) {
@@ -851,14 +887,15 @@ export function CardDesigner() {
   };
 
   const calculateA4Layout = () => {
-    const { cardCount, rowGap, columnGap, marginLeft, marginRight, marginTop, marginBottom, forceLayout } = a4Settings;
+    const { cardCount, rows, columns, rowGap, columnGap, marginLeft, marginRight, marginTop, marginBottom, forceLayout } = a4Settings;
     
-    if (forceLayout && cardCount === 10) {
+    if (forceLayout && cardCount > 0) {
       const availableWidth = A4_DIMENSIONS.width - marginLeft - marginRight;
       const availableHeight = A4_DIMENSIONS.height - marginTop - marginBottom;
       
-      const optimalCardWidth = Math.floor((availableWidth - columnGap) / 2);
-      const optimalCardHeight = Math.floor((availableHeight - 4 * rowGap) / 5);
+      // Calculate optimal card size based on rows and columns
+      const optimalCardWidth = Math.floor((availableWidth - (columns - 1) * columnGap) / columns);
+      const optimalCardHeight = Math.floor((availableHeight - (rows - 1) * rowGap) / rows);
       
       if (currentDesign.width !== optimalCardWidth || currentDesign.height !== optimalCardHeight) {
         setCurrentDesign(prev => ({
@@ -868,7 +905,7 @@ export function CardDesigner() {
         }));
       }
       
-      return { rows: 5, cols: 2, optimalCardWidth, optimalCardHeight };
+      return { rows, cols: columns, optimalCardWidth, optimalCardHeight };
     }
     
     return { rows: 5, cols: 2 };
@@ -888,14 +925,14 @@ export function CardDesigner() {
     
     const availableWidthMm = 210 - marginLeftMm - marginRightMm;
     const availableHeightMm = 297 - marginTopMm - marginBottomMm;
-    const cardWidthMm = (availableWidthMm - columnGapMm) / 2;
-    const cardHeightMm = (availableHeightMm - 4 * rowGapMm) / 5;
+    const cardWidthMm = (availableWidthMm - (a4Settings.columns - 1) * columnGapMm) / a4Settings.columns;
+    const cardHeightMm = (availableHeightMm - (a4Settings.rows - 1) * rowGapMm) / a4Settings.rows;
 
-    // สร้าง HTML สำหรับการ์ด 10 ใบ
+    // สร้าง HTML สำหรับการ์ดตามจำนวนที่กำหนด
     let cardsHTML = '';
-    for (let index = 0; index < 10; index++) {
-      const col = index % 2;
-      const row = Math.floor(index / 2);
+    for (let index = 0; index < a4Settings.cardCount; index++) {
+      const col = index % a4Settings.columns;
+      const row = Math.floor(index / a4Settings.columns);
       const xMm = marginLeftMm + col * (cardWidthMm + columnGapMm);
       const yMm = marginTopMm + row * (cardHeightMm + rowGapMm);
 
@@ -1062,7 +1099,7 @@ export function CardDesigner() {
     printWindow.document.write(printHTML);
     printWindow.document.close();
 
-    toast.success('เริ่มการพิมพ์ A4 Layout - 10 ภาพต่อหน้า');
+    toast.success(`เริ่มการพิมพ์ A4 Layout - ${a4Settings.cardCount} ภาพต่อหน้า`);
   };
 
   const selectedTextElement = selectedElement && currentDesign.texts.find(t => t.id === selectedElement);
@@ -1384,7 +1421,7 @@ export function CardDesigner() {
                 <CardContent className="p-3 space-y-2">
                   <div className="flex items-center justify-between">
                     <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs">
-                      🎯 2×5 = 10 ภาพ
+                      🎯 {a4Settings.columns}×{a4Settings.rows} = {a4Settings.cardCount} ภาพ
                     </Badge>
                     <Badge variant="outline" className="text-green-700 border-green-300 text-xs">
                       เต็ม A4
@@ -1393,13 +1430,46 @@ export function CardDesigner() {
                   
                   <div className="p-2 bg-green-100 rounded border border-green-200">
                     <div className="text-xs text-green-700">
-                      📐 {currentDesign.width}×{currentDesign.height}px • 🖨️ 2 คอลัมน์×5 แถว
+                      📐 {currentDesign.width}×{currentDesign.height}px • 🖨️ {a4Settings.columns} คอลัมน์×{a4Settings.rows} แถว
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-1">
+                  {/* Row and Column Settings */}
+                  <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <Label className="text-xs text-green-700">↕️ แถว</Label>
+                      <Label className="text-xs text-green-700">📊 จำนวนแถว</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        max="10"
+                        value={a4Settings.rows}
+                        onChange={(e) => setA4Settings(prev => ({ 
+                          ...prev, 
+                          rows: parseInt(e.target.value) || 5 
+                        }))}
+                        className="border-green-300 focus:border-green-500 h-7 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-green-700">📈 จำนวนคอลัมน์</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        max="5"
+                        value={a4Settings.columns}
+                        onChange={(e) => setA4Settings(prev => ({ 
+                          ...prev, 
+                          columns: parseInt(e.target.value) || 2 
+                        }))}
+                        className="border-green-300 focus:border-green-500 h-7 text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Gap Settings */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs text-green-700">↕️ ระยะห่างแถว</Label>
                       <Input
                         type="number"
                         min="5"
@@ -1413,7 +1483,7 @@ export function CardDesigner() {
                       />
                     </div>
                     <div>
-                      <Label className="text-xs text-green-700">↔️ คอลัมน์</Label>
+                      <Label className="text-xs text-green-700">↔️ ระยะห่างคอลัมน์</Label>
                       <Input
                         type="number"
                         min="5"
