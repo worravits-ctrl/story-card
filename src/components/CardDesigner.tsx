@@ -1429,8 +1429,39 @@ export function CardDesigner() {
                   </div>
                   
                   <div className="p-2 bg-green-100 rounded border border-green-200">
-                    <div className="text-xs text-green-700">
+                    <div className="text-xs text-green-700 mb-2">
                       📐 {currentDesign.width}×{currentDesign.height}px • 🖨️ {a4Settings.columns} คอลัมน์×{a4Settings.rows} แถว
+                    </div>
+                    
+                    {/* Mini layout preview */}
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="text-xs text-green-600 font-medium">ตัวอย่างเลย์เอาต์</div>
+                      <div 
+                        className="bg-white border border-green-300 rounded p-1 shadow-sm"
+                        title={`เลย์เอาต์ ${a4Settings.columns} คอลัมน์ × ${a4Settings.rows} แถว = ${a4Settings.cardCount} การ์ด`}
+                        style={{ 
+                          width: '60px', 
+                          height: '80px',
+                          display: 'grid',
+                          gridTemplateColumns: `repeat(${a4Settings.columns}, 1fr)`,
+                          gridTemplateRows: `repeat(${a4Settings.rows}, 1fr)`,
+                          gap: '1px'
+                        }}
+                      >
+                        {Array.from({ length: a4Settings.cardCount }).map((_, index) => (
+                          <div
+                            key={index}
+                            className="bg-blue-200 rounded-sm border border-blue-300 hover:bg-blue-300 transition-colors"
+                            style={{
+                              minHeight: '3px',
+                              minWidth: '3px'
+                            }}
+                          />
+                        ))}
+                      </div>
+                      <div className="text-xs text-green-500">
+                        {a4Settings.columns}×{a4Settings.rows}
+                      </div>
                     </div>
                   </div>
                   
@@ -1922,7 +1953,9 @@ export function CardDesigner() {
           {/* A4 Layout Canvas */}
           {showA4Layout && (
             <div className="flex flex-col items-center">
-              <h3 className="text-xl font-bold mb-4 text-green-700">🖨️ A4 เต็มพื้นที่ (10 ภาพ)</h3>
+              <h3 className="text-xl font-bold mb-4 text-green-700">
+                🖨️ A4 เต็มพื้นที่ ({a4Settings.cardCount} ภาพ - {a4Settings.columns}×{a4Settings.rows})
+              </h3>
               <div className="border-4 border-green-300 shadow-2xl bg-white rounded-xl overflow-hidden" 
                    style={{ width: '656px', height: '928px' }}>
                 <div 
@@ -1935,16 +1968,16 @@ export function CardDesigner() {
                     transformOrigin: 'top left'
                   }}
                 >
-                  {/* Render exactly 10 cards in 2x5 layout */}
-                  {Array.from({ length: 10 }).map((_, index) => {
-                    const col = index % 2;
-                    const row = Math.floor(index / 2);
+                  {/* Render cards based on dynamic rows and columns */}
+                  {Array.from({ length: a4Settings.cardCount }).map((_, index) => {
+                    const col = index % a4Settings.columns;
+                    const row = Math.floor(index / a4Settings.columns);
                     
                     const availableWidth = A4_DIMENSIONS.width - a4Settings.marginLeft - a4Settings.marginRight;
                     const availableHeight = A4_DIMENSIONS.height - a4Settings.marginTop - a4Settings.marginBottom;
                     
-                    const cardWidth = Math.floor((availableWidth - a4Settings.columnGap) / 2);
-                    const cardHeight = Math.floor((availableHeight - 4 * a4Settings.rowGap) / 5);
+                    const cardWidth = Math.floor((availableWidth - (a4Settings.columns - 1) * a4Settings.columnGap) / a4Settings.columns);
+                    const cardHeight = Math.floor((availableHeight - (a4Settings.rows - 1) * a4Settings.rowGap) / a4Settings.rows);
                     
                     const x = a4Settings.marginLeft + col * (cardWidth + a4Settings.columnGap);
                     const y = a4Settings.marginTop + row * (cardHeight + a4Settings.rowGap);
